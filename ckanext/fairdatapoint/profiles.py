@@ -13,6 +13,7 @@ from ckan.plugins import toolkit
 from ckan import model
 import dateutil.parser as dateparser
 from dateutil.parser import ParserError
+from json import JSONDecodeError
 from typing import Dict, List
 from rdflib import URIRef
 
@@ -43,7 +44,10 @@ def _convert_extras_to_declared_schema_fields(dataset_dict: Dict) -> Dict:
         if field_key in dataset_fields:
             preset = dataset_fields[field_key]
             if preset == 'multiple_text' and field_value:
-                dataset_dict[field_key] = json.loads(field_value)
+                try:
+                    dataset_dict[field_key] = json.loads(field_value)
+                except JSONDecodeError:
+                    dataset_dict[field_key] = field_value
             elif preset == 'date' and field_value:
                 dataset_dict[field_key] = convert_datetime_string(field_value)
             else:
