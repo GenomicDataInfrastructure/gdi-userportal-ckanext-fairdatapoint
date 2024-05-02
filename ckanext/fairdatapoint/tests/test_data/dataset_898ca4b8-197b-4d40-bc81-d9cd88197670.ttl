@@ -7,6 +7,7 @@
 @prefix prov: <http://www.w3.org/ns/prov#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ns3: <http://www.w3.org/2006/vcard/ns#> .
 
 <https://fair.healthinformationportal.eu/distribution/> a ldp:DirectContainer ;
     dcterms:title "Distributions" ;
@@ -36,7 +37,8 @@
     dcterms:title "Slovenian income, poverty and social exclusion indicators"@en ;
     ns2:SIO_000628 <https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670/metrics/445c0a70d1e214e545b261559e2842f4>,
         <https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670/metrics/5d27e854a9e78eb3f663331cd47cdc13> ;
-    dcat:contactPoint <https://healthinformationportal.eu> ;
+    dcat:contactPoint  [ a ns3:Kind ;
+        ns3:hasUID <https://healthinformationportal.eu> ] ;
     dcat:keyword "Self-perceived health, poverty"@en ;
     dcat:landingPage <https://www.healthinformationportal.eu/health-information-sources/slovenian-income-poverty-and-social-exclusion-indicators> ;
     dcat:theme <http://publications.europa.eu/resource/authority/data-theme/HEAL>,

@@ -100,17 +100,31 @@ class FairDataPointRecordProvider:
 
         # Look-up contact information
         for contact_point_uri in self.get_values(g, subject_uri, DCAT.contactPoint):
-            if 'orcid' in contact_point_uri:
-                orcid_response = requests.get(str(contact_point_uri) + '/public-record.json')
-                json_orcid_response = orcid_response.json()
-                name = json_orcid_response['displayName']
-                name_literal = Literal(name)
-                g.add((subject_uri, VCARD.fn, name_literal))
-                # TODO add original Orcid URL in a field
+            if isinstance(contact_point_uri, URIRef):
+                self._parse_contact_point(g=g, subject_uri=subject_uri, contact_point_uri=contact_point_uri)
 
         result = g.serialize(format='ttl')
 
         return result
+
+    @staticmethod
+    def _parse_contact_point(g: Graph, subject_uri: URIRef, contact_point_uri: URIRef):
+        """
+        Replaces contact point URI with a VCard
+        """
+        g.remove((subject_uri, DCAT.contactPoint, contact_point_uri))
+        vcard_node = BNode()
+        g.add((subject_uri, DCAT.contactPoint, vcard_node))
+        g.add((vcard_node, RDF.type, VCARD.Kind))
+        g.add((vcard_node, VCARD.hasUID, contact_point_uri))
+        if 'orcid' in str(contact_point_uri):
+            try:
+                orcid_response = requests.get(str(contact_point_uri).rstrip('/') + '/public-record.json')
+                json_orcid_response = orcid_response.json()
+                name = json_orcid_response['displayName']
+                g.add((vcard_node, VCARD.fn, Literal(name)))
+            except (JSONDecodeError, HTTPError) as e:
+                log.error(f'Failed to get data from ORCID for {contact_point_uri}: {e}')
 
     @staticmethod
     def get_values(graph: Graph,
