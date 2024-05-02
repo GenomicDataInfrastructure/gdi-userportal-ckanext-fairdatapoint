@@ -15,9 +15,6 @@
     ldp:hasMemberRelation ns2:metadataCatalog ;
     ldp:membershipResource <https://fair.healthinformationportal.eu> .
 
-<https://fair.healthinformationportal.eu#accessRights> a dcterms:RightsStatement ;
-    dcterms:description "This resource has no access restriction" .
-
 <https://fair.healthinformationportal.eu#identifier> a <http://purl.org/spar/datacite/Identifier> ;
     dcterms:identifier "https://fair.healthinformationportal.eu" .
 

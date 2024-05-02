@@ -17,7 +17,6 @@
 <https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670> a dcat:Dataset,
         dcat:Resource ;
     rdfs:label "Slovenian income, poverty and social exclusion indicators" ;
-    dcterms:accessRights <https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670#accessRights> ;
     dcterms:conformsTo <https://fair.healthinformationportal.eu/profile/2f08228e-1789-40f8-84cd-28e3288c3604> ;
     dcterms:creator "Statisti&#269;ni urad Republike Slovenije"@en ;
     dcterms:description "The purpose of data collection is to show the quality of life in Slovenia in view of allocation of disposable income among households, relative poverty and social exclusion for different socio-economic groups of persons and households and to highlight which groups of population are relatively worse off than the rest of the population and are thus more vulnerable to poverty, material deprivation and unemployment. One of the main purposes is also collecting data on health (disability, unmet needs, etc). {\"Topics\": \"Self-perceived health/morbidity, Disability, Wellbeing\", \"Data collection period\": \"2005-01-01 2021-12-31\", \"Funding\": \"State Budget\", \"Geo coverage\": \"Nuts 3\", \"Target population\": \"General population\", \"Age range from\": \"16\", \"Age range to\": \"100\", \"Updating periodicity\": \"Annually\", \"Sample size\": \"\", \"Personal identifier\": \"National identifier\", \"Level of aggregation\": \"Individual\", \"Linkage possible\": \"Only to some\", \"Permanent identifier of the data source\": \"\", \"Regulations for data sharing\": \"\"}"@en ;
@@ -53,9 +52,6 @@
     ns1:metadataIdentifier <https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670#identifier> ;
     ns1:metadataIssued "2023-10-06T10:13:09.627000+00:00"^^xsd:dateTime ;
     ns1:metadataModified "2023-10-25T14:01:34.351000+00:00"^^xsd:dateTime .
-
-<https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670#accessRights> a dcterms:RightsStatement ;
-    dcterms:description "This resource has no access restriction" .
 
 <https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670#identifier> a <http://purl.org/spar/datacite/Identifier> ;
     dcterms:identifier "https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670" .

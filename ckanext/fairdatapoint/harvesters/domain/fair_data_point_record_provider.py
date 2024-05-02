@@ -11,7 +11,9 @@ import requests
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point import FairDataPoint
 
-from rdflib import Namespace, URIRef, Literal, DCAT, DCTERMS, Graph, RDF
+from requests import JSONDecodeError, HTTPError
+
+from rdflib import Namespace, URIRef, Literal, DCAT, DCTERMS, Graph, RDF, BNode
 from rdflib.term import Node
 from typing import Dict, Iterable, Union
 
@@ -84,9 +86,13 @@ class FairDataPointRecordProvider:
 
         subject_uri = URIRef(subject_url)
 
+        self._remove_fdp_defaults(g, subject_uri)
+
         # Add information from distribution to graph
         for distribution_uri in g.objects(subject=subject_uri, predicate=DCAT.distribution):
             distribution_g = self.fair_data_point.get_graph(distribution_uri)
+
+            self._remove_fdp_defaults(g, distribution_uri)
 
             for predicate in [
                 DCTERMS.description,
@@ -135,3 +141,11 @@ class FairDataPointRecordProvider:
 
         for value in graph.objects(subject=subject_uri, predicate=predicate_uri):
             yield value
+
+    @staticmethod
+    def _remove_fdp_defaults(g, subject_uri):
+        for (s, p, o) in g.triples((subject_uri, DCTERMS.accessRights, None)):
+            access_rights_default = URIRef(f'{subject_uri}#accessRights')
+            if o == access_rights_default:
+                g.remove((subject_uri, DCTERMS.accessRights, o))
+                g.remove((access_rights_default, None, None))
