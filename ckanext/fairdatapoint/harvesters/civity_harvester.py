@@ -359,7 +359,7 @@ class CivityHarvester(HarvesterBase):
         # Get the last harvested object (if any)
         previous_object = model.Session.query(HarvestObject) \
             .filter(HarvestObject.guid == harvest_object.guid) \
-            .filter(HarvestObject.current is True) \
+            .filter(HarvestObject.current == True) \
             .first()
 
         # Flag previous object as not current anymore
@@ -427,7 +427,7 @@ class CivityHarvester(HarvesterBase):
         :return:
         """
         query = model.Session.query(HarvestObject.guid, HarvestObject.package_id). \
-            filter(HarvestObject.current is True). \
+            filter(HarvestObject.current == True). \
             filter(HarvestObject.harvest_source_id == harvest_job.source.id)
 
         guid_to_package_id = {}
