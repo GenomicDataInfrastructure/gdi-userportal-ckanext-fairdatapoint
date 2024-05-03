@@ -11,7 +11,9 @@ import requests
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point import FairDataPoint
 
-from rdflib import Namespace, URIRef, Literal, DCAT, DCTERMS, Graph, RDF
+from requests import JSONDecodeError, HTTPError
+
+from rdflib import Namespace, URIRef, Literal, DCAT, DCTERMS, Graph, RDF, BNode
 from rdflib.term import Node
 from typing import Dict, Iterable, Union
 
@@ -84,9 +86,13 @@ class FairDataPointRecordProvider:
 
         subject_uri = URIRef(subject_url)
 
+        self._remove_fdp_defaults(g, subject_uri)
+
         # Add information from distribution to graph
         for distribution_uri in g.objects(subject=subject_uri, predicate=DCAT.distribution):
             distribution_g = self.fair_data_point.get_graph(distribution_uri)
+
+            self._remove_fdp_defaults(g, distribution_uri)
 
             for predicate in [
                 DCTERMS.description,
@@ -100,17 +106,31 @@ class FairDataPointRecordProvider:
 
         # Look-up contact information
         for contact_point_uri in self.get_values(g, subject_uri, DCAT.contactPoint):
-            if 'orcid' in contact_point_uri:
-                orcid_response = requests.get(str(contact_point_uri) + '/public-record.json')
-                json_orcid_response = orcid_response.json()
-                name = json_orcid_response['displayName']
-                name_literal = Literal(name)
-                g.add((subject_uri, VCARD.fn, name_literal))
-                # TODO add original Orcid URL in a field
+            if isinstance(contact_point_uri, URIRef):
+                self._parse_contact_point(g=g, subject_uri=subject_uri, contact_point_uri=contact_point_uri)
 
         result = g.serialize(format='ttl')
 
         return result
+
+    @staticmethod
+    def _parse_contact_point(g: Graph, subject_uri: URIRef, contact_point_uri: URIRef):
+        """
+        Replaces contact point URI with a VCard
+        """
+        g.remove((subject_uri, DCAT.contactPoint, contact_point_uri))
+        vcard_node = BNode()
+        g.add((subject_uri, DCAT.contactPoint, vcard_node))
+        g.add((vcard_node, RDF.type, VCARD.Kind))
+        g.add((vcard_node, VCARD.hasUID, contact_point_uri))
+        if 'orcid' in str(contact_point_uri):
+            try:
+                orcid_response = requests.get(str(contact_point_uri).rstrip('/') + '/public-record.json')
+                json_orcid_response = orcid_response.json()
+                name = json_orcid_response['displayName']
+                g.add((vcard_node, VCARD.fn, Literal(name)))
+            except (JSONDecodeError, HTTPError) as e:
+                log.error(f'Failed to get data from ORCID for {contact_point_uri}: {e}')
 
     @staticmethod
     def get_values(graph: Graph,
@@ -121,3 +141,11 @@ class FairDataPointRecordProvider:
 
         for value in graph.objects(subject=subject_uri, predicate=predicate_uri):
             yield value
+
+    @staticmethod
+    def _remove_fdp_defaults(g, subject_uri):
+        for (s, p, o) in g.triples((subject_uri, DCTERMS.accessRights, None)):
+            access_rights_default = URIRef(f'{subject_uri}#accessRights')
+            if o == access_rights_default:
+                g.remove((subject_uri, DCTERMS.accessRights, o))
+                g.remove((access_rights_default, None, None))

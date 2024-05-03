@@ -83,8 +83,6 @@ def test_parse_dataset():
         'identifier': 'lgg_ucsf_2014', 'language': ['http://id.loc.gov/vocabulary/iso639-1/en'],
         'conforms_to': ['https://health-ri.sandbox.semlab-leiden.nl/profile/2f08228e-1789-40f8-84cd-28e3288c3604'],
         'publisher_uri': 'https://www.health-ri.nl',
-        'access_rights': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/'
-                         'd9956191-1aff-4181-ac8b-16b829135ed5#accessRights',
         'is_referenced_by': '["https://pubmed.ncbi.nlm.nih.gov/24336570"]'}
     assert actual == expected
 

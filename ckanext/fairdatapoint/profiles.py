@@ -15,9 +15,11 @@ import dateutil.parser as dateparser
 from dateutil.parser import ParserError
 from json import JSONDecodeError
 from typing import Dict, List
-from rdflib import URIRef
+from rdflib import URIRef, Namespace
 
 log = logging.getLogger(__name__)
+
+VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
 
 
 def _convert_extras_to_declared_schema_fields(dataset_dict: Dict) -> Dict:
@@ -101,12 +103,25 @@ class FAIRDataPointDCATAPProfile(EuropeanDCATAP2Profile):
 
         dataset_dict['tags'] = validate_tags(dataset_dict['tags'])
 
-        # Example of adding a field
-        # dataset_dict['extras'].append({'key': 'hello',
-        #                                'value': 'Hello from the FAIR data point profile. Use this function to do '
-        #                                         'FAIR data point specific stuff during the import stage'})
-
         return dataset_dict
+
+    def _contact_details(self, subject, predicate):
+        """
+        Overrides RDFProfile._contact_details so uri is taken from hasUID for VCard
+        """
+        contact = {}
+        # todo fix for multiple
+
+        for agent in self.g.objects(subject, predicate):
+
+            contact['uri'] = (str(agent) if isinstance(agent, URIRef)
+                              else self._get_vcard_property_value(agent, VCARD.hasUID))
+
+            contact['name'] = self._get_vcard_property_value(agent, VCARD.hasFN, VCARD.fn)
+
+            contact['email'] = self._without_mailto(self._get_vcard_property_value(agent, VCARD.hasEmail))
+
+        return contact
 
     # def graph_from_dataset(self, dataset_dict, dataset_ref):
     #
