@@ -97,3 +97,109 @@ def test_parse_dataset():
 def test_convert_datetime_string(input_timestring, expected_output):
     actual = convert_datetime_string(input_timestring)
     assert actual == expected_output
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+def test_profile_contact_point_uri():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "contact_point_url.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0;"
+             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
+             }
+        ],
+        'title': 'Example',
+        'notes': 'This is an example description.',
+        'contact_uri': 'https://orcid.org/0000-0002-9095-9201',
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+def test_profile_contact_point_vcard():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "contact_point_vcard.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0;"
+             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
+             }
+        ],
+        'title': 'Example',
+        'notes': 'This is an example description.',
+        'contact_uri': 'https://orcid.org/0000-0002-9095-9201',
+        'contact_name': 'Marc Bonten',
+        'contact_email': 'marc.bonten@example.com',
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+@pytest.mark.xfail()
+def test_profile_contact_point_multiple_uris():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "contact_point_multiple_urls.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0;"
+             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
+             }
+        ],
+        'title': 'Example',
+        'notes': 'This is an example description.',
+        'contact_uri': ['https://orcid.org/0000-0002-9095-9201', 'https://orcid.org/0000-0003-2558-7496'],
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+@pytest.mark.xfail()
+def test_profile_contact_point_multiple_cards():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "contact_point_multiple_cards.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0;"
+             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
+             }
+        ],
+        'title': 'Example',
+        'notes': 'This is an example description.',
+        'contact_uri': ['https://orcid.org/0000-0002-9095-9201', 'https://orcid.org/0000-0003-2558-7496'],
+        'contact_name': ['Marc Bonten', 'Frits Rosendaal'],
+        'contact_email': ['marc.bonten@example.com', 'frits.rosendaal@example.com'],
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected
