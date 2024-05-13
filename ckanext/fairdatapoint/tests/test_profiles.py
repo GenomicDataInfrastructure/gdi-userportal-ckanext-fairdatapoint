@@ -18,7 +18,7 @@
 
 import pytest
 from datetime import datetime
-from dateutil.tz import tzutc, tzoffset
+from dateutil.tz import tzutc
 from pathlib import Path
 from rdflib import Graph, URIRef
 from ckanext.fairdatapoint.profiles import validate_tags, convert_datetime_string
@@ -91,8 +91,15 @@ def test_parse_dataset():
     ("2023-10-06T10:12:55.614000+00:00",
      datetime(2023, 10, 6, 10, 12, 55, 614000, tzinfo=tzutc())),
     ("2024-02-15 11:16:37+03:00",
-     datetime(2024, 2, 15, 11, 16, 37, tzinfo=tzoffset(None, 10800))),
+     datetime(2024, 2, 15, 8, 16, 37, tzinfo=tzutc())),
+    ("2014-09-12T19:34:29Z",
+     datetime(2014, 9, 12, 19, 34, 29, tzinfo=tzutc())),
+    ("2007-04-05T12:30.512000-02:00",
+     datetime(2007, 4, 5, 14, 30, 30, tzinfo=tzutc())),
+    ("2007-04-05T12:30-02:00",
+     datetime(2007, 4, 5, 14, 30, tzinfo=tzutc())),
     ("November 9, 1999", datetime(1999, 11, 9, 0, 0, 0)),
+    ("25-06-2023", datetime(2023, 6, 25)),
     ("2006-09", datetime(2006, 9, datetime.today().day))])
 def test_convert_datetime_string(input_timestring, expected_output):
     actual = convert_datetime_string(input_timestring)

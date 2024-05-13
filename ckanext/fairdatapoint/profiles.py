@@ -3,7 +3,7 @@
 #  check for multiple-text fields in the schema
 # All changes are © Stichting Health-RI and are licensed under the AGPLv3 license
 
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 import json
 import logging
@@ -85,9 +85,11 @@ def convert_datetime_string(date_value: str) -> datetime:
     Converts datestrings (e.g. '2023-10-06T10:12:55.614000+00:00') to datetime class instance
     """
     try:
-        date_value = dateparser.parse(date_value)
+        date_value = dateparser.parse(date_value, yearfirst=True)
+        if date_value.tzinfo is not None:
+            date_value = date_value.astimezone(timezone.utc)
     except ParserError:
-        log.error('A date field string value can not be parsed to a date')
+        log.error(f'A date field string value {date_value} can not be parsed to a date')
     return date_value
 
 
