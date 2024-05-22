@@ -15,7 +15,7 @@ import dateutil.parser as dateparser
 from dateutil.parser import ParserError
 from json import JSONDecodeError
 from typing import Dict, List
-from rdflib import URIRef, Namespace
+from rdflib import URIRef, Namespace, DCAT
 
 log = logging.getLogger(__name__)
 
@@ -100,6 +100,7 @@ class FAIRDataPointDCATAPProfile(EuropeanDCATAP2Profile):
 
     def parse_dataset(self, dataset_dict: Dict, dataset_ref: URIRef) -> Dict:
         super(FAIRDataPointDCATAPProfile, self).parse_dataset(dataset_dict, dataset_ref)
+        dataset_dict = self._parse_contact_point(dataset_dict, dataset_ref)
 
         dataset_dict = _convert_extras_to_declared_schema_fields(dataset_dict)
 
@@ -107,36 +108,34 @@ class FAIRDataPointDCATAPProfile(EuropeanDCATAP2Profile):
 
         return dataset_dict
 
-    def _contact_details(self, subject, predicate):
+    def _contact_point_details(self, subject, predicate) -> List:
         """
         Overrides RDFProfile._contact_details so uri is taken from hasUID for VCard
         """
-        contact = {}
-        # todo fix for multiple
+        contact_list = []
 
         for agent in self.g.objects(subject, predicate):
+            contact = {
+                'contact_uri': (str(agent) if isinstance(agent, URIRef)
+                        else self._get_vcard_property_value(agent, VCARD.hasUID)),
+                'contact_name': self._get_vcard_property_value(agent, VCARD.hasFN, VCARD.fn),
+                'contact_email': self._without_mailto(self._get_vcard_property_value(agent, VCARD.hasEmail))}
 
-            contact['uri'] = (str(agent) if isinstance(agent, URIRef)
-                              else self._get_vcard_property_value(agent, VCARD.hasUID))
+            contact_list.append(contact)
 
-            contact['name'] = self._get_vcard_property_value(agent, VCARD.hasFN, VCARD.fn)
+        return contact_list
 
-            contact['email'] = self._without_mailto(self._get_vcard_property_value(agent, VCARD.hasEmail))
-
-        return contact
-
-    # def graph_from_dataset(self, dataset_dict, dataset_ref):
-    #
-    #     g = self.g
-    #
-    #     spatial_text = self._get_dataset_value(dataset_dict, 'hello')
-    #
-    #     if spatial_uri:
-    #         spatial_ref = URIRef(spatial_uri)
-    #     else:
-    #         spatial_ref = BNode()
-    #
-    #     if spatial_text:
-    #         g.add((dataset_ref, DCT.spatial, spatial_ref))
-    #         g.add((spatial_ref, RDF.type, DCT.Location))
-    #         g.add((spatial_ref, RDFS.label, Literal(spatial_text)))
+    def _parse_contact_point(self, dataset_dict: Dict, dataset_ref: URIRef) -> Dict:
+        """
+        ckan-dcat extension implies there can be just one contact point and in case a list is provided by source only
+        last value is taken. Besides it never solves uri from a VCard object. This function parses DCAT.contactPoint 
+        information to a list of `pontact_point` dictionaries and replaces ckan-dcat values
+        """
+        contact_point = self._contact_point_details(subject=dataset_ref, predicate=DCAT.contactPoint)
+        dcat_profile_contact_fields = ['contact_name', 'contact_email', 'contact_uri']
+        if contact_point:
+            dataset_dict['extras'].append({'key': 'contact_point', 'value': contact_point})
+            # Remove the extras contact_ fields if they were parsed by dcat extension
+            dataset_dict['extras'] = \
+                [item for item in dataset_dict['extras'] if item.get('key') not in dcat_profile_contact_fields]
+        return dataset_dict
