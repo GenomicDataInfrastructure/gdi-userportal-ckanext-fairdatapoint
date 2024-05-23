@@ -18,13 +18,13 @@
 
 import pytest
 from datetime import datetime
-from dateutil.tz import tzutc, tzoffset
+from dateutil.tz import tzutc
 from pathlib import Path
 from rdflib import Graph, URIRef
 from ckanext.fairdatapoint.profiles import validate_tags, convert_datetime_string
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
     FairDataPointRecordToPackageConverter)
-
+from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import FairDataPointRecordProvider
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
 
 
@@ -91,9 +91,150 @@ def test_parse_dataset():
     ("2023-10-06T10:12:55.614000+00:00",
      datetime(2023, 10, 6, 10, 12, 55, 614000, tzinfo=tzutc())),
     ("2024-02-15 11:16:37+03:00",
-     datetime(2024, 2, 15, 11, 16, 37, tzinfo=tzoffset(None, 10800))),
+     datetime(2024, 2, 15, 8, 16, 37, tzinfo=tzutc())),
+    ("2014-09-12T19:34:29Z",
+     datetime(2014, 9, 12, 19, 34, 29, tzinfo=tzutc())),
+    ("2007-04-05T12:30.512000-02:00",
+     datetime(2007, 4, 5, 14, 30, 30, tzinfo=tzutc())),
+    ("2007-04-05T12:30-02:00",
+     datetime(2007, 4, 5, 14, 30, tzinfo=tzutc())),
     ("November 9, 1999", datetime(1999, 11, 9, 0, 0, 0)),
+    ("25-06-2023", datetime(2023, 6, 25)),
     ("2006-09", datetime(2006, 9, datetime.today().day))])
 def test_convert_datetime_string(input_timestring, expected_output):
     actual = convert_datetime_string(input_timestring)
     assert actual == expected_output
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+def test_profile_contact_point_uri():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "contact_point_url.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0;"
+             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
+             }
+        ],
+        'title': 'Example',
+        'notes': 'This is an example description.',
+        'contact_point': [
+            {
+                'contact_uri': 'https://orcid.org/0000-0002-9095-9201',
+                'contact_email': '',
+                'contact_name': '',
+            }
+        ],
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+def test_profile_contact_point_vcard():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "contact_point_vcard.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0;"
+             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
+             }
+        ],
+        'title': 'Example',
+        'notes': 'This is an example description.',
+        'contact_point': [
+            {
+                'contact_uri': 'https://orcid.org/0000-0002-9095-9201',
+                'contact_name': 'Marc Bonten',
+                'contact_email': 'marc.bonten@example.com'
+            }
+        ],
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+def test_profile_contact_point_multiple_uris():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "contact_point_multiple_urls.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0;"
+             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
+             }
+        ],
+        'title': 'Example',
+        'notes': 'This is an example description.',
+        'contact_point': [
+            {
+                'contact_email': '',
+                'contact_name': '',
+                'contact_uri': 'https://orcid.org/0000-0002-9095-9201'
+            },
+            {
+                'contact_email': '',
+                'contact_name': '',
+                'contact_uri': 'https://orcid.org/0000-0003-2558-7496'
+            }
+        ],
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+def test_profile_contact_point_multiple_cards():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "contact_point_multiple_cards.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0;"
+             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
+             }
+        ],
+        'title': 'Example',
+        'notes': 'This is an example description.',
+        'contact_point': [
+            {
+                'contact_email': 'marc.bonten@example.com',
+                'contact_name': 'Marc Bonten',
+                'contact_uri': 'https://orcid.org/0000-0002-9095-9201'
+            },
+            {
+                'contact_email': 'frits.rosendaal@example.com',
+                'contact_name': 'Frits Rosendaal',
+                'contact_uri': 'https://orcid.org/0000-0003-2558-7496'
+            }
+        ],
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected

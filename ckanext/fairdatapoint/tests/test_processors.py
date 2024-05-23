@@ -70,8 +70,13 @@ class TestProcessors:
             "license_id": "",
             "identifier": "27866022694497978",
             "has_version": ["https://repo.metadatacenter.org/template-instances/2836bf1c-76e9-44e7-a65e-80e9ca63025a"],
-            "contact_name": 'N.K. De Vries',
-            "contact_uri": "https://orcid.org/0000-0002-4348-707X",
+            "contact_point": [
+                {
+                    "contact_name": "N.K. De Vries",
+                    "contact_uri": "https://orcid.org/0000-0002-4348-707X",
+                    "contact_email": "",
+                }
+            ],
             "publisher_uri": "https://opal.health-ri.nl/pub/",
             "temporal_start": datetime(2020, 1, 1, 0, 0),
             "temporal_end": datetime(2025, 12, 31, 0, 0)}
