@@ -32,6 +32,9 @@ TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
     ([{"name": "CNS/Brain"}], [{"name": "CNS Brain"}]),
     ([{"name": "COVID-19"}, {"name": "3`-DNA"}], [{"name": "COVID-19"}, {"name": "3 -DNA"}]),
     ([{"name": "something-1.1"}, {"name": "breast cancer"}], [{"name": "something-1.1"}, {"name": "breast cancer"}]),
+    ([{"name": "-"}], []),
+    ([{"name": "It is a ridiculously long (more 100 chars) text for a tag therefore it should be removed from the "
+               "result to prevent CKAN harvester from failing"}], []),
     ([], [])
 ])
 def test_validate_tags(input_tags, expected_tags):
