@@ -69,14 +69,19 @@ def validate_tags(values_list: List[Dict]) -> List:
     tags = []
     for item in values_list:
         tag_value = item['name']
-        find_illegal = re.search(illegal_pattern, tag_value)
-        if find_illegal:
-            log.warning(f'Tag {tag_value} contains values other than alphanumeric characters, spaces, hyphens, '
-                        f'underscores or dots, they will be replaces with spaces')
-            tag = {'name': re.sub(illegal_pattern, ' ', tag_value)}
-            tags.append(tag)
+        if len(tag_value) < 2:
+            log.warning(f'Tag {tag_value} is shorter than 2 characters and will be removed')
+        elif len(tag_value) > 100:
+            log.warning(f'Tag {tag_value} is longer than 100 characters and will be removed')
         else:
-            tags.append(item)
+            find_illegal = re.search(illegal_pattern, tag_value)
+            if find_illegal:
+                log.warning(f'Tag {tag_value} contains values other than alphanumeric characters, spaces, hyphens, '
+                            f'underscores or dots, they will be replaces with spaces')
+                tag = {'name': re.sub(illegal_pattern, ' ', tag_value)}
+                tags.append(tag)
+            else:
+                tags.append(item)
     return tags
 
 
