@@ -1,5 +1,11 @@
-name: Tests
-on: [push, pull_request]
+# SPDX-FileCopyrightText: 2024 Stichting Health-RI
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+name: Rus Tests
+
+on: push
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -50,4 +56,6 @@ jobs:
         ckan -c test.ini db init
     - name: Run tests
       run: pytest --ckan-ini=test.ini --cov=ckanext.fairdatapoint --disable-warnings ckanext/fairdatapoint
-
+    - uses: actions/checkout@v4
+    - name: REUSE Compliance Check
+      uses: fsfe/reuse-action@v2
