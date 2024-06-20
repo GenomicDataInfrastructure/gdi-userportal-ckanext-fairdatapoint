@@ -1,6 +1,9 @@
-# File original (C) Civity
-# File modified by Stichting Health-RI to allow for a non-custom exception
-# All changes are © Stichting Health-RI and are licensed under the AGPLv3 license
+# SPDX-FileCopyrightText: 2023 Civity
+# SPDX-FileContributor: 2024 Stichting Health-RI
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+
 from ckanext.fairdatapoint.harvesters.civity_harvester import CivityHarvester
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import FairDataPointRecordProvider
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import \

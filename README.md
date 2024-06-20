@@ -13,6 +13,7 @@ SPDX-License-Identifier: CC-BY-4.0
 [![GitHub contributors](https://img.shields.io/github/contributors/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/graphs/contributors)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](code_of_conduct.md)
 
+
 # ckanext-fairdatapoint
 
 CKAN harvester for [FAIR Data Point](https://www.fairdatapoint.org/). Contains a harvester for FAIR data points. In the future, the FAIR data point API might be supported by this extension too.
@@ -152,7 +153,11 @@ If ckanext-fairdatapoint should be available on PyPI you can follow these steps 
 ## License
 This work is licensed under multiple licenses. Because keeping this section up-to-date is challenging, here is a brief summary as of January 2024:
 
+<<<<<<< HEAD
 - All original source code is licensed under [AGPL](./LICENSES/AGPL-3.0-only.txt).
+=======
+- All original source code is licensed under [Apache-2.0](./LICENSES/Apache-2.0.txt).
+>>>>>>> bfcab3ae1cce6430848bbbff3da569a469df4b5c
 - All documentation is licensed under [CC-BY-4.0](./LICENSES/CC-BY-4.0.txt).
 - Some configuration and data files are licensed under [CC-BY-4.0](./LICENSES/CC-BY-4.0.txt).
 - For more accurate information, check the individual files.

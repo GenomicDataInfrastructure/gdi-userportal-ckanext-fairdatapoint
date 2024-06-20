@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: 2023 Civity
+# SPDX-FileContributor: 2024 Stichting Health-RI
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+
 import ckan.plugins as plugins
 import ckan.plugins.toolkit as toolkit
 

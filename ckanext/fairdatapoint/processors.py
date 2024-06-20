@@ -1,3 +1,8 @@
+# SPDX-FileCopyrightText: 2023 Civity
+# SPDX-FileContributor: 2024 Stichting Health-RI
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 from rdflib import RDF, DCAT
 from rdflib.term import Node
 from typing import Iterable, Dict
