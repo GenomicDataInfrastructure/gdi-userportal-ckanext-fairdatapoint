@@ -152,12 +152,7 @@ If ckanext-fairdatapoint should be available on PyPI you can follow these steps 
 
 ## License
 This work is licensed under multiple licenses. Because keeping this section up-to-date is challenging, here is a brief summary as of January 2024:
-
-<<<<<<< HEAD
 - All original source code is licensed under [AGPL](./LICENSES/AGPL-3.0-only.txt).
-=======
-- All original source code is licensed under [Apache-2.0](./LICENSES/Apache-2.0.txt).
->>>>>>> bfcab3ae1cce6430848bbbff3da569a469df4b5c
 - All documentation is licensed under [CC-BY-4.0](./LICENSES/CC-BY-4.0.txt).
 - Some configuration and data files are licensed under [CC-BY-4.0](./LICENSES/CC-BY-4.0.txt).
 - For more accurate information, check the individual files.
