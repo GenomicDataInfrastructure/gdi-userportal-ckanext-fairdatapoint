@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2024 Stichting Health-RI 
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # -*- coding: utf-8 -*-
 # Always prefer setuptools over distutils
 from setuptools import setup, find_packages

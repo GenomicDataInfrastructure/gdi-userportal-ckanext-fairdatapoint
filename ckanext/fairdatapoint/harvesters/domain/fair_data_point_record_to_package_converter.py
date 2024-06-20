@@ -1,7 +1,7 @@
-# File original (C) Civity
-# File modified by Stichting Health-RI in January 2024 to remove custom exception and dependency on
-#  Civity-specific record provider
-# All changes are © Stichting Health-RI and are licensed under the AGPLv3 license
+# SPDX-FileCopyrightText: 2023 Civity
+# SPDX-FileContributor: 2024 Stichting Health-RI
+#
+# SPDX-License-Identifier: AGPL-3.0-only
 
 import logging
 

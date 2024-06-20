@@ -1,4 +1,15 @@
-[![Tests](https://github.com/CivityNL/ckanext-fairdatapoint/workflows/Tests/badge.svg?branch=main)](https://github.com/CivityNL/ckanext-fairdatapoint/actions)
+<!--
+SPDX-FileCopyrightText: 2023 Civity 
+SPDX-FileContributor: 2024 Stichting Health-RI
+
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
+
+[![REUSE status](https://api.reuse.software/badge/github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint)](https://api.reuse.software/info/github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint)
+[![Tests](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/test.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/test.yml)
+[![Release](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/test.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/release.yml)
+[![Main](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/main.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/main.yml)
 
 # ckanext-fairdatapoint
 
@@ -147,5 +158,9 @@ If ckanext-fairdatapoint should be available on PyPI you can follow these steps 
        git push --tags
 
 ## License
+This work is licensed under multiple licenses. Because keeping this section up-to-date is challenging, here is a brief summary as of January 2024:
 
-[AGPL](https://www.gnu.org/licenses/agpl-3.0.en.html)
+- All original source code is licensed under [Apache-2.0](./LICENSES/Apache-2.0.txt).
+- All documentation is licensed under [CC-BY-4.0](./LICENSES/CC-BY-4.0.txt).
+- Some configuration and data files are licensed under [CC-BY-4.0](./LICENSES/CC-BY-4.0.txt).
+- For more accurate information, check the individual files.
