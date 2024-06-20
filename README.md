@@ -1,8 +1,21 @@
-[![Tests](https://github.com/CivityNL/ckanext-fairdatapoint/workflows/Tests/badge.svg?branch=main)](https://github.com/CivityNL/ckanext-fairdatapoint/actions)
+<!--
+SPDX-FileCopyrightText: 2023 Civity 
+SPDX-FileContributor: 2024 Stichting Health-RI
+
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
+
+[![REUSE status](https://api.reuse.software/badge/github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint)](https://api.reuse.software/info/github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint)
+[![Tests](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/test.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/test.yml)
+[![Release](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/test.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/release.yml)
+[![Main](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/main.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/main.yml)
+[![GitHub contributors](https://img.shields.io/github/contributors/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/graphs/contributors)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](code_of_conduct.md)
 
 # ckanext-fairdatapoint
 
-CKAN extension for FAIR data points. Contains a harvester for FAIR data points. In the future, the FAIR data point API might be supported by this extension too. 
+CKAN harvester for [FAIR Data Point](https://www.fairdatapoint.org/). Contains a harvester for FAIR data points. In the future, the FAIR data point API might be supported by this extension too.
 
 ## Stages
 
@@ -29,24 +42,16 @@ To rebuiod the index in case it is not automatically update after clearing all p
 ckan --config=<full path to CKAN ini-file> search-index rebuild
 ``
 
+For more information got to [GDI harvester information](https://genomicdatainfrastructure.github.io/gdi-userportal-docs/docs/ckan/harvester/)
+
+
 ## Requirements
 
 Compatibility with core CKAN versions:
 
 | CKAN version    | Compatible? |
 |-----------------|-------------|
-| 2.6 and earlier | no          |
-| 2.7             | no          |
-| 2.8             | not tested  |
-| 2.9             | yes         |
-| 2.10            | not tested  |
-
-Suggested values:
-
-* "yes"
-* "not tested" - I can't think of a reason why it wouldn't work
-* "not yet" - there is an intention to get it working
-* "no"
+| 2.10            | tested      |
 
 
 ## Installation
@@ -55,7 +60,7 @@ Suggested values:
    For example installing any non-Python dependencies or adding any required
    config settings.
 
-To install ckanext-fairdatapoint:
+To install gdi-userportal-ckanext-fairdatapoint:
 
 1. Activate your CKAN virtual environment, for example:
 
@@ -63,8 +68,8 @@ To install ckanext-fairdatapoint:
 
 2. Clone the source and install it on the virtualenv
 
-    git clone https://github.com/CivityNL/ckanext-fairdatapoint.git
-    cd ckanext-fairdatapoint
+    git clone https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint.git
+    cd gdi-userportal-ckanext-fairdatapoint
     pip install -e .
 	pip install -r requirements.txt
 
@@ -93,8 +98,8 @@ None at present
 To install ckanext-fairdatapoint for development, activate your CKAN virtualenv and
 do:
 
-    git clone https://github.com/CivityNL/ckanext-fairdatapoint.git
-    cd ckanext-fairdatapoint
+    git clone https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint.git
+    cd gdi-userportal-ckanext-fairdatapoint
     python setup.py develop
     pip install -r dev-requirements.txt
 
@@ -109,9 +114,7 @@ pip install -r https://raw.githubusercontent.com/ckan/ckanext-dcat/v1.5.1/requir
 
 ## Tests
 
-To run the tests, do:
-
-    pytest --ckan-ini=test.ini
+To run the tests go to [GDI harvester test information](https://genomicdatainfrastructure.github.io/gdi-userportal-docs/docs/ckan/extension-local-setup-and-testing/)
 
 
 ## Releasing a new version of ckanext-fairdatapoint
@@ -147,5 +150,9 @@ If ckanext-fairdatapoint should be available on PyPI you can follow these steps 
        git push --tags
 
 ## License
+This work is licensed under multiple licenses. Because keeping this section up-to-date is challenging, here is a brief summary as of January 2024:
 
-[AGPL](https://www.gnu.org/licenses/agpl-3.0.en.html)
+- All original source code is licensed under [AGPL](./LICENSES/AGPL-3.0-only.txt).
+- All documentation is licensed under [CC-BY-4.0](./LICENSES/CC-BY-4.0.txt).
+- Some configuration and data files are licensed under [CC-BY-4.0](./LICENSES/CC-BY-4.0.txt).
+- For more accurate information, check the individual files.
