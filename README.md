@@ -8,6 +8,7 @@ SPDX-License-Identifier: CC-BY-4.0
 
 [![REUSE status](https://api.reuse.software/badge/github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint)](https://api.reuse.software/info/github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint)
 [![Tests](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/test.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/test.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=GenomicDataInfrastructure_gdi-userportal-ckanext-fairdatapoint&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=GenomicDataInfrastructure_gdi-userportal-ckanext-fairdatapoint)
 [![Release](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/release.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/release.yml)
 [![Main](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/main.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/main.yml)
 [![GitHub contributors](https://img.shields.io/github/contributors/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/graphs/contributors)
