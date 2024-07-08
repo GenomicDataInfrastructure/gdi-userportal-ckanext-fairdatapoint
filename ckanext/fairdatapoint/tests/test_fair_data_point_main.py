@@ -2,8 +2,6 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only 
 
-import pytest
-from pytest_mock import mocker
 from unittest.mock import patch
 from ckanext.fairdatapoint.fair_data_point_main import main
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import FairDataPointRecordProvider

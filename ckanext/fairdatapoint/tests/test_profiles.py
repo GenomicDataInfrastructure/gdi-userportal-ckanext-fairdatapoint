@@ -10,7 +10,7 @@ from rdflib import Graph, URIRef
 from ckanext.fairdatapoint.profiles import validate_tags, convert_datetime_string
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
     FairDataPointRecordToPackageConverter)
-from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import FairDataPointRecordProvider
+
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
 
 
@@ -220,6 +220,36 @@ def test_profile_contact_point_multiple_cards():
                 'contact_email': 'frits.rosendaal@example.com',
                 'contact_name': 'Frits Rosendaal',
                 'contact_uri': 'https://orcid.org/0000-0003-2558-7496'
+            }
+        ],
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+def test_profile_creator():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "creator_prisma.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://fdp.radboudumc.nl/catalog/fa48b19f-f390-4023-872d-f0f0024bfcec;"
+             "dataset=http://example.org/dataset/1",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'http://example.org/dataset/1'
+             }
+        ],
+        'title': 'Sample Dataset Title',
+        'notes': 'This is a description of the sample dataset.',
+        'creator': [
+            {
+                'creator_identifier': 'https://orcid.org/0000-0002-9095-9201',
+                'creator_name': 'Marc Bonten'
             }
         ],
         'license_id': '',
