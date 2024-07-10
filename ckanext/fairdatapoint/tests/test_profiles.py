@@ -6,10 +6,11 @@ import pytest
 from datetime import datetime
 from dateutil.tz import tzutc
 from pathlib import Path
-from rdflib import Graph, URIRef
+from rdflib import Graph
 from ckanext.fairdatapoint.profiles import validate_tags, convert_datetime_string
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
-    FairDataPointRecordToPackageConverter)
+    FairDataPointRecordToPackageConverter
+)
 
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
 
@@ -20,7 +21,7 @@ TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
     ([{"name": "something-1.1"}, {"name": "breast cancer"}], [{"name": "something-1.1"}, {"name": "breast cancer"}]),
     ([{"name": "-"}], []),
     ([{"name": "It is a ridiculously long (more 100 chars) text for a tag therefore it should be removed from the "
-               "result to prevent CKAN harvester from failing"}], []),
+       "result to prevent CKAN harvester from failing"}], []),
     ([], [])
 ])
 def test_validate_tags(input_tags, expected_tags):
@@ -41,38 +42,37 @@ def test_parse_dataset():
     expected = {
         'extras': [
             {'key': 'uri',
-             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d9956191-1aff-4181-ac8b-16b829135ed5'
-             }
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d9956191-1aff-4181-ac8b-16b829135ed5'}
         ],
-        'resources': [{'name': 'Clinical data for [PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)',
-                       'description': 'Clinical data for [PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)',
-                       'access_url': 'https://cbioportal.health-ri.nl/study/clinicalData?id=lgg_ucsf_2014',
-                       'license': 'http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0',
-                       'url': 'https://cbioportal.health-ri.nl/study/clinicalData?id=lgg_ucsf_2014',
-                       'uri': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/'
-                              '931ed9c4-ad23-47ff-b121-2eb428e57423',
-                       'distribution_ref': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/'
-                                           '931ed9c4-ad23-47ff-b121-2eb428e57423'},
-                      {'name': 'Mutations',
-                       'description': 'Mutation data from whole exome sequencing of 23 grade II glioma tumor/normal '
-                                      'pairs. (MAF)',
-                       'access_url': 'https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014',
-                       'license': 'http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0',
-                       'url': 'https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014',
-                       'uri': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/'
-                              'ad00299f-6efb-42aa-823d-5ff2337f38f7',
-                       'distribution_ref': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/'
-                                           'ad00299f-6efb-42aa-823d-5ff2337f38f7'}],
+        'resources': [
+            {'name': 'Clinical data for [PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)',
+             'description': 'Clinical data for [PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)',
+             'access_url': 'https://cbioportal.health-ri.nl/study/clinicalData?id=lgg_ucsf_2014',
+             'license': 'http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0',
+             'url': 'https://cbioportal.health-ri.nl/study/clinicalData?id=lgg_ucsf_2014',
+             'uri': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/931ed9c4-ad23-47ff-b121-2eb428e57423',
+             'distribution_ref': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/931ed9c4-ad23-47ff-b121-2eb428e57423'},
+            {'name': 'Mutations',
+             'description': 'Mutation data from whole exome sequencing of 23 grade II glioma tumor/normal pairs. (MAF)',
+             'access_url': 'https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014',
+             'license': 'http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0',
+             'url': 'https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014',
+             'uri': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/ad00299f-6efb-42aa-823d-5ff2337f38f7',
+             'distribution_ref': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/ad00299f-6efb-42aa-823d-5ff2337f38f7'}
+        ],
         'title': '[PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)',
         'notes': 'Whole exome sequencing of 23 grade II glioma tumor/normal pairs.',
         'url': 'https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014',
-        'tags': [{'name': 'CNS Brain'}, {'name': 'Diffuse Glioma'}, {'name': 'Glioma'}], 'license_id': '',
+        'tags': [{'name': 'CNS Brain'}, {'name': 'Diffuse Glioma'}, {'name': 'Glioma'}],
+        'license_id': '',
         'issued': datetime(2019, 10, 30, 23, 0),
         'modified': datetime(2019, 10, 30, 23, 0),
-        'identifier': 'lgg_ucsf_2014', 'language': ['http://id.loc.gov/vocabulary/iso639-1/en'],
+        'identifier': 'lgg_ucsf_2014',
+        'language': ['http://id.loc.gov/vocabulary/iso639-1/en'],
         'conforms_to': ['https://health-ri.sandbox.semlab-leiden.nl/profile/2f08228e-1789-40f8-84cd-28e3288c3604'],
         'publisher_uri': 'https://www.health-ri.nl',
-        'is_referenced_by': '["https://pubmed.ncbi.nlm.nih.gov/24336570"]'}
+        'is_referenced_by': '["https://pubmed.ncbi.nlm.nih.gov/24336570"]'
+    }
     assert actual == expected
 
 
@@ -89,7 +89,8 @@ def test_parse_dataset():
      datetime(2007, 4, 5, 14, 30, tzinfo=tzutc())),
     ("November 9, 1999", datetime(1999, 11, 9, 0, 0, 0)),
     ("25-06-2023", datetime(2023, 6, 25)),
-    ("2006-09", datetime(2006, 9, datetime.today().day))])
+    ("2006-09", datetime(2006, 9, datetime.today().day))
+])
 def test_convert_datetime_string(input_timestring, expected_output):
     actual = convert_datetime_string(input_timestring)
     assert actual == expected_output
@@ -107,8 +108,7 @@ def test_profile_contact_point_uri():
     expected = {
         'extras': [
             {'key': 'uri',
-             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
-             }
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'}
         ],
         'title': 'Example',
         'notes': 'This is an example description.',
@@ -116,7 +116,7 @@ def test_profile_contact_point_uri():
             {
                 'contact_uri': 'https://orcid.org/0000-0002-9095-9201',
                 'contact_email': '',
-                'contact_name': '',
+                'contact_name': ''
             }
         ],
         'license_id': '',
@@ -138,8 +138,7 @@ def test_profile_contact_point_vcard():
     expected = {
         'extras': [
             {'key': 'uri',
-             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
-             }
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'}
         ],
         'title': 'Example',
         'notes': 'This is an example description.',
@@ -169,8 +168,7 @@ def test_profile_contact_point_multiple_uris():
     expected = {
         'extras': [
             {'key': 'uri',
-             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
-             }
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'}
         ],
         'title': 'Example',
         'notes': 'This is an example description.',
@@ -205,8 +203,7 @@ def test_profile_contact_point_multiple_cards():
     expected = {
         'extras': [
             {'key': 'uri',
-             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'
-             }
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'}
         ],
         'title': 'Example',
         'notes': 'This is an example description.',
@@ -241,8 +238,7 @@ def test_profile_creator():
     expected = {
         'extras': [
             {'key': 'uri',
-             'value': 'http://example.org/dataset/1'
-             }
+             'value': 'http://example.org/dataset/1'}
         ],
         'title': 'Sample Dataset Title',
         'notes': 'This is a description of the sample dataset.',

@@ -15,7 +15,7 @@ import dateutil.parser as dateparser
 from dateutil.parser import ParserError
 from json import JSONDecodeError
 from typing import Dict, List
-from rdflib import URIRef, Namespace, DCAT, DCTERMS, RDF, FOAF
+from rdflib import URIRef, Namespace, DCAT, DCTERMS, FOAF
 
 log = logging.getLogger(__name__)
 
@@ -163,12 +163,7 @@ class FAIRDataPointDCATAPProfile(EuropeanDCATAP2Profile):
                 # If the creator is a URI, use it as the identifier
                 if isinstance(creator_ref, URIRef):
                     creator['creator_identifier'] = str(creator_ref)
-                    # Attempt to get the name from the graph if available
-                    name_from_graph = graph.value(creator_ref, FOAF.name)
-                    if name_from_graph:
-                        creator['creator_name'] = str(name_from_graph)
-                    else:
-                        creator['creator_name'] = str(creator_ref)
+                    creator['creator_name'] = str(creator_ref)
                 else:
                     creator['creator_name'] = str(creator_ref)
 
