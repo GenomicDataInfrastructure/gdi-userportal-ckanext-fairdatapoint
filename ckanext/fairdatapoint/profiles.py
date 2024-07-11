@@ -15,7 +15,7 @@ import dateutil.parser as dateparser
 from dateutil.parser import ParserError
 from json import JSONDecodeError
 from typing import Dict, List
-from rdflib import URIRef, Namespace, DCAT
+from rdflib import URIRef, Namespace, DCAT, DCTERMS, FOAF
 
 log = logging.getLogger(__name__)
 
@@ -107,6 +107,8 @@ class FAIRDataPointDCATAPProfile(EuropeanDCATAP2Profile):
         super(FAIRDataPointDCATAPProfile, self).parse_dataset(dataset_dict, dataset_ref)
         dataset_dict = self._parse_contact_point(dataset_dict, dataset_ref)
 
+        dataset_dict = self._parse_creator(dataset_dict, dataset_ref)
+
         dataset_dict = _convert_extras_to_declared_schema_fields(dataset_dict)
 
         dataset_dict['tags'] = validate_tags(dataset_dict['tags'])
@@ -143,4 +145,31 @@ class FAIRDataPointDCATAPProfile(EuropeanDCATAP2Profile):
             # Remove the extras contact_ fields if they were parsed by dcat extension
             dataset_dict['extras'] = \
                 [item for item in dataset_dict['extras'] if item.get('key') not in dcat_profile_contact_fields]
+        return dataset_dict
+
+    def _parse_creator(self, dataset_dict: Dict, dataset_ref: URIRef) -> Dict:
+        graph = self.g
+        creators = []
+        for creator_ref in graph.objects(dataset_ref, DCTERMS.creator):
+            creator = {}
+            creator_identifier = graph.value(creator_ref, DCTERMS.identifier)
+            creator_name = graph.value(creator_ref, FOAF.name)
+
+            if creator_identifier:
+                creator['creator_identifier'] = str(creator_identifier)
+            if creator_name:
+                creator['creator_name'] = str(creator_name)
+            else:
+                # If the creator is a URI, use it as the identifier
+                if isinstance(creator_ref, URIRef):
+                    creator['creator_identifier'] = str(creator_ref)
+                    creator['creator_name'] = str(creator_ref)
+                else:
+                    creator['creator_name'] = str(creator_ref)
+
+            creators.append(creator)
+
+        if len(creators) > 0:
+            dataset_dict['creator'] = creators
+
         return dataset_dict

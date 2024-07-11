@@ -45,27 +45,21 @@ class TestProcessors:
                  "http://purl.org/zonmw/generic/10006;"
                  "dataset=https://covid19initiatives.health-ri.nl/p/Project/27866022694497978",
             record=data)
-        expected_dataset = {"extras":
-            [
-                {"key": "uri", "value": "https://covid19initiatives.health-ri.nl/p/Project/27866022694497978"}
-            ],
-            "resources": [],
-            "title": "COVID-NL cohort MUMC+",
-            "notes": "Clinical data of MUMC COVID-NL cohort",
-            "tags": [],
-            "license_id": "",
-            "identifier": "27866022694497978",
-            "has_version": ["https://repo.metadatacenter.org/template-instances/2836bf1c-76e9-44e7-a65e-80e9ca63025a"],
-            "contact_point": [
+        expected_dataset = dict(extras=[
+            {"key": "uri", "value": "https://covid19initiatives.health-ri.nl/p/Project/27866022694497978"}
+        ], resources=[], title="COVID-NL cohort MUMC+", notes="Clinical data of MUMC COVID-NL cohort", tags=[],
+            license_id="", identifier="27866022694497978",
+            has_version=["https://repo.metadatacenter.org/template-instances/2836bf1c-76e9-44e7-a65e-80e9ca63025a"],
+            contact_point=[
                 {
                     "contact_name": "N.K. De Vries",
                     "contact_uri": "https://orcid.org/0000-0002-4348-707X",
                     "contact_email": "",
                 }
-            ],
-            "publisher_uri": "https://opal.health-ri.nl/pub/",
-            "temporal_start": datetime(2020, 1, 1, 0, 0),
-            "temporal_end": datetime(2025, 12, 31, 0, 0)}
+            ], creator=[{"creator_identifier": "https://orcid.org/0000-0002-0180-3636",
+                         "creator_name": "https://orcid.org/0000-0002-0180-3636"}],
+            publisher_uri="https://opal.health-ri.nl/pub/", temporal_start=datetime(2020, 1, 1, 0, 0),
+            temporal_end=datetime(2025, 12, 31, 0, 0))
         assert actual_dataset == expected_dataset
 
     def test_fdp_record_converter_catalog_dict(self):
