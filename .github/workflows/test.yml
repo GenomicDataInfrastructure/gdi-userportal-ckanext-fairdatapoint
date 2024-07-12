@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2024 Stichting Health-RI
+# SPDX-FileContributor: 2024 PNED G.I.E.
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
@@ -59,7 +60,7 @@ jobs:
     - name: Generate coverage report
       run: coverage xml -o coverage.xml
     - name: SonarCloud Scan
-      uses: sonarsource/sonarcloud-github-action@master
+      uses: sonarsource/sonarcloud-github-action@v2
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
