@@ -2,7 +2,7 @@
 # SPDX-FileContributor: 2024 Stichting Health-RI
 #
 # SPDX-License-Identifier: AGPL-3.0-only
-
+import logging
 
 from ckanext.fairdatapoint.harvesters.civity_harvester import CivityHarvester
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import (
@@ -17,6 +17,8 @@ PROFILE = "profile"
 HARVEST_CATALOG = "harvest_catalogs"
 HARVEST_CATALOG_CONFIG = "ckanext.fairdatapoint.harvest_catalogs"
 
+log = logging.getLogger(__name__)
+
 
 class FairDataPointCivityHarvester(CivityHarvester):
 
@@ -29,6 +31,9 @@ class FairDataPointCivityHarvester(CivityHarvester):
             harvest_catalogs = toolkit.asbool(
                 harvest_config_dict.get(HARVEST_CATALOG, False)
             )
+            log.debug("harvest_catalogs from harvester config: %s", harvest_catalogs)
+        else:
+            log.debug("harvest_catalogs from ckan config: %s", harvest_catalogs)
 
         self.record_provider = FairDataPointRecordProvider(
             harvest_url, harvest_catalogs
