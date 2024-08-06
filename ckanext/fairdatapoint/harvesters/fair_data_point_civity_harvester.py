@@ -22,18 +22,23 @@ log = logging.getLogger(__name__)
 
 class FairDataPointCivityHarvester(CivityHarvester):
 
+    def _get_harvest_catalog_setting(self, harvest_config_dict):
+        if HARVEST_CATALOG in harvest_config_dict:
+            log.debug("Using harvest_catalogs from harvest_config_dict")
+            harvest_catalog_setting = toolkit.asbool(
+                harvest_config_dict[HARVEST_CATALOG]
+            )
+        else:
+            log.debug("Using harvest_catalogs from global CKAN config")
+            harvest_catalog_setting = toolkit.asbool(
+                toolkit.config.get(HARVEST_CATALOG_CONFIG, False)
+            )
+        log.debug("Harvesting catalogs is set to %s", harvest_catalog_setting)
+        return harvest_catalog_setting
+
     def setup_record_provider(self, harvest_url, harvest_config_dict):
         # Harvest catalog config can be set on global CKAN level, but can be overriden by harvest config
-        harvest_catalogs = toolkit.asbool(
-            toolkit.config.get(HARVEST_CATALOG_CONFIG, False)
-        )
-        if HARVEST_CATALOG in harvest_config_dict:
-            harvest_catalogs = toolkit.asbool(
-                harvest_config_dict.get(HARVEST_CATALOG, False)
-            )
-            log.debug("harvest_catalogs from harvester config: %s", harvest_catalogs)
-        else:
-            log.debug("harvest_catalogs from ckan config: %s", harvest_catalogs)
+        harvest_catalogs = self._get_harvest_catalog_setting(harvest_config_dict)
 
         self.record_provider = FairDataPointRecordProvider(
             harvest_url, harvest_catalogs
