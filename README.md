@@ -86,13 +86,11 @@ To install gdi-userportal-ckanext-fairdatapoint:
 
 ## Config settings
 
-None at present
+There is a setting `ckanext.fairdatapoint.harvest_catalogs`. Default is `false`. If set to `true`,
+CKAN will harvest catalogs as datasets.
 
-**TODO:** Document any optional config settings here. For example:
-
-	# The minimum number of hours to wait before re-checking a resource
-	# (optional, default: 24).
-	ckanext.fairdatapoint.some_setting = some_default_value
+The setting can be overriden in the harvester profile, by setting `"harvest_catalogs": "true"` or
+`"harvest_catalogs": "false"` in the harvester configuration JSON.
 
 
 ## Developer installation
