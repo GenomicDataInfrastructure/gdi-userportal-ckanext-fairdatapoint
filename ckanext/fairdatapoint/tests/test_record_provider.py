@@ -12,19 +12,19 @@ from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider imp
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
 
 TEST_CAT_IDS_DICT = {
-            "catalog=https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d":
-                URIRef("https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d"),
-            "catalog=https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d;"
-            "dataset=https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670":
-                URIRef("https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670"),
-            "catalog=https://fair.healthinformationportal.eu/catalog/14225c50-00b0-4fba-8300-a677ab0c86f4":
-                URIRef("https://fair.healthinformationportal.eu/catalog/14225c50-00b0-4fba-8300-a677ab0c86f4"),
-            "catalog=https://fair.healthinformationportal.eu/catalog/14225c50-00b0-4fba-8300-a677ab0c86f4;"
-            "dataset=https://fair.healthinformationportal.eu/dataset/32bd0246-b731-480a-b5f4-a2f60ccaebc9":
-                URIRef("https://fair.healthinformationportal.eu/dataset/32bd0246-b731-480a-b5f4-a2f60ccaebc9"),
-            "catalog=https://fair.healthinformationportal.eu/catalog/17412bc2-daf1-491e-94fb-6680f7a67b1e":
-                URIRef("https://fair.healthinformationportal.eu/catalog/17412bc2-daf1-491e-94fb-6680f7a67b1e")
-        }
+    "catalog=https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d":
+        URIRef("https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d"),
+    "catalog=https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d;"
+    "dataset=https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670":
+        URIRef("https://fair.healthinformationportal.eu/dataset/898ca4b8-197b-4d40-bc81-d9cd88197670"),
+    "catalog=https://fair.healthinformationportal.eu/catalog/14225c50-00b0-4fba-8300-a677ab0c86f4":
+        URIRef("https://fair.healthinformationportal.eu/catalog/14225c50-00b0-4fba-8300-a677ab0c86f4"),
+    "catalog=https://fair.healthinformationportal.eu/catalog/14225c50-00b0-4fba-8300-a677ab0c86f4;"
+    "dataset=https://fair.healthinformationportal.eu/dataset/32bd0246-b731-480a-b5f4-a2f60ccaebc9":
+        URIRef("https://fair.healthinformationportal.eu/dataset/32bd0246-b731-480a-b5f4-a2f60ccaebc9"),
+    "catalog=https://fair.healthinformationportal.eu/catalog/17412bc2-daf1-491e-94fb-6680f7a67b1e":
+        URIRef("https://fair.healthinformationportal.eu/catalog/17412bc2-daf1-491e-94fb-6680f7a67b1e")
+}
 
 
 def get_graph_by_id(*args, **kwargs):
@@ -39,12 +39,12 @@ class TestRecordProvider:
     fdp_record_provider = FairDataPointRecordProvider("http://test_end_point.com")
 
     @pytest.mark.parametrize("fdp_response_file,expected",
-                         [
-                             (Path(TEST_DATA_DIRECTORY, "root_fdp_response.ttl"),
-                              TEST_CAT_IDS_DICT.keys()),
-                             (Path(TEST_DATA_DIRECTORY, "root_fdp_response_no_catalogs.ttl"),
-                              dict().keys())
-                          ])
+                             [
+                                 (Path(TEST_DATA_DIRECTORY, "root_fdp_response.ttl"),
+                                  TEST_CAT_IDS_DICT.keys()),
+                                 (Path(TEST_DATA_DIRECTORY, "root_fdp_response_no_catalogs.ttl"),
+                                  dict().keys())
+                             ])
     def test_get_record_ids(self, mocker, fdp_response_file, expected):
         fdp_get_graph = mocker.MagicMock(name="get_data")
         mocker.patch("ckanext.fairdatapoint.harvesters.domain.fair_data_point.FairDataPoint.get_graph",
@@ -92,7 +92,7 @@ class TestRecordProvider:
     def test_orcid_call(self, mocker):
         """if orcid url in contact point - add vcard full name"""
         with requests_mock.Mocker() as mock:
-            mock.get("https://orcid.org/0000-0002-4348-707X/public-record.json", 
+            mock.get("https://orcid.org/0000-0002-4348-707X/public-record.json",
                      json={"displayName": "N.K. De Vries"})
             fdp_get_graph = mocker.MagicMock(name="get_data")
             mocker.patch("ckanext.fairdatapoint.harvesters.domain.fair_data_point.FairDataPoint.get_graph",
@@ -105,3 +105,27 @@ class TestRecordProvider:
             expected = Graph().parse(Path(TEST_DATA_DIRECTORY, "Project_27866022694497978_out.ttl")).serialize()
             assert mock.called
             assert actual == expected
+
+    @pytest.mark.parametrize("harvest_catalogs, expected_results", [
+        (False, {
+            'catalog=http://example.com/catalog1;dataset=http://example.com/dataset1': URIRef(
+                'http://example.com/dataset1')
+        }),
+        (True, {
+            'catalog=http://example.com/catalog1;dataset=http://example.com/dataset1': URIRef(
+                'http://example.com/dataset1'),
+            'catalog=http://example.com/catalog1': URIRef('http://example.com/catalog1')
+        })
+    ])
+    def test_process_catalogs(self, mocker, harvest_catalogs, expected_results):
+        fdp_get_graph = mocker.MagicMock(name="get_data")
+        mocker.patch("ckanext.fairdatapoint.harvesters.domain.fair_data_point.FairDataPoint.get_graph",
+                     new=fdp_get_graph)
+        fdp_get_graph.return_value = Graph().parse(Path(TEST_DATA_DIRECTORY, "process_catalogs.ttl"))
+
+        self.fdp_record_provider.harvest_catalogs = harvest_catalogs
+        actual_result = self.fdp_record_provider._process_catalog("http://example.com/catalog1")
+
+        # Assertions
+        for key, value in expected_results.items():
+            assert actual_result[key] == value
