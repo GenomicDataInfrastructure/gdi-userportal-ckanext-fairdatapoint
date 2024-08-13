@@ -127,5 +127,4 @@ class TestRecordProvider:
         actual_result = self.fdp_record_provider._process_catalog("http://example.com/catalog1")
 
         # Assertions
-        for key, value in expected_results.items():
-            assert actual_result[key] == value
+        assert actual_result == expected_results
