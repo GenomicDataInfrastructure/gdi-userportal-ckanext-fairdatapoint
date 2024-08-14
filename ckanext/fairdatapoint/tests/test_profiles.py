@@ -9,8 +9,8 @@ from pathlib import Path
 from rdflib import Graph
 from ckanext.fairdatapoint.profiles import validate_tags, convert_datetime_string
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
-    FairDataPointRecordToPackageConverter)
-
+    FairDataPointRecordToPackageConverter
+)
 
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
 
@@ -112,7 +112,13 @@ def test_profile_contact_point_uri():
         ],
         'title': 'Example',
         'notes': 'This is an example description.',
-        'contact_uri': 'https://orcid.org/0000-0002-9095-9201',
+        'contact_point': [
+            {
+                'contact_uri': 'https://orcid.org/0000-0002-9095-9201',
+                'contact_email': '',
+                'contact_name': ''
+            }
+        ],
         'license_id': '',
         'resources': [],
         'tags': []
@@ -136,14 +142,89 @@ def test_profile_contact_point_vcard():
         ],
         'title': 'Example',
         'notes': 'This is an example description.',
-        'contact_uri': 'https://orcid.org/0000-0002-9095-9201',
-        'contact_name': 'Marc Bonten',
-        'contact_email': 'marc.bonten@example.com',
+        'contact_point': [
+            {
+                'contact_uri': 'https://orcid.org/0000-0002-9095-9201',
+                'contact_name': 'Marc Bonten',
+                'contact_email': 'marc.bonten@example.com'
+            }
+        ],
         'license_id': '',
         'resources': [],
         'tags': []
     }
     assert actual == expected
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+def test_profile_contact_point_multiple_uris():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "contact_point_multiple_urls.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0;"
+             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'}
+        ],
+        'title': 'Example',
+        'notes': 'This is an example description.',
+        'contact_point': [
+            {
+                'contact_email': '',
+                'contact_name': '',
+                'contact_uri': 'https://orcid.org/0000-0002-9095-9201'
+            },
+            {
+                'contact_email': '',
+                'contact_name': '',
+                'contact_uri': 'https://orcid.org/0000-0003-2558-7496'
+            }
+        ],
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
+def test_profile_contact_point_multiple_cards():
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
+    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "contact_point_multiple_cards.ttl")).serialize()
+    actual = fdp_record_to_package.record_to_package(
+        guid="https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0;"
+             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25",
+        record=data)
+    expected = {
+        'extras': [
+            {'key': 'uri',
+             'value': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25'}
+        ],
+        'title': 'Example',
+        'notes': 'This is an example description.',
+        'contact_point': [
+            {
+                'contact_email': 'marc.bonten@example.com',
+                'contact_name': 'Marc Bonten',
+                'contact_uri': 'https://orcid.org/0000-0002-9095-9201'
+            },
+            {
+                'contact_email': 'frits.rosendaal@example.com',
+                'contact_name': 'Frits Rosendaal',
+                'contact_uri': 'https://orcid.org/0000-0003-2558-7496'
+            }
+        ],
+        'license_id': '',
+        'resources': [],
+        'tags': []
+    }
+    assert actual == expected
+
 
 @pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
 @pytest.mark.usefixtures("with_plugins")
