@@ -21,4 +21,5 @@
             dcat:startDate "2020-01-01"^^xsd:date ] ;
     dcterms:title "COVID-NL cohort MUMC+"@en ;
      dcat:contactPoint [ a v:Kind ;
-        v:fn "N.K. De Vries" ; ] .
+        v:fn "N.K. De Vries" ;
+        v:hasUID <https://orcid.org/0000-0002-4348-707X> ] .
