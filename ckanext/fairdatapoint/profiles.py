@@ -8,7 +8,7 @@ import re
 import json
 import logging
 
-from ckanext.dcat.profiles import EuropeanDCATAP2Profile
+from ckanext.dcat.profiles import EuropeanDCATAP3Profile
 from ckan.plugins import toolkit
 from ckan import model
 import dateutil.parser as dateparser
@@ -20,46 +20,6 @@ from rdflib import URIRef, Namespace, DCAT, DCTERMS, FOAF
 log = logging.getLogger(__name__)
 
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
-
-
-def _convert_extras_to_declared_schema_fields(dataset_dict: Dict) -> Dict:
-    """
-    Compares the extras dictionary with the declared schema.
-    Updates the declared schema fields with the values that match from the extras.
-    Remove the extras that are present on the declared schema.
-    :param dataset_dict:
-    :return: dataset_dict - Updated dataset_dict
-    """
-    # Use the correct dataset type, Defaults to 'dataset'
-    dataset_type = dataset_dict.get('type', 'dataset')
-    # Gets the full Schema definition of the correct dataset type
-    context = {'model': model, 'session': model.Session}
-    data_dict = {'type': dataset_type}
-    full_schema_dict = toolkit.get_action('scheming_dataset_schema_show')(context, data_dict)
-
-    dataset_fields = {x.get('field_name'): x.get('preset') for x in full_schema_dict.get('dataset_fields', [])}
-
-    # Populate the declared schema fields, if they are present in the extras
-    for extra_dict in dataset_dict.get('extras', []):
-        field_key = extra_dict.get('key')
-        field_value = extra_dict.get('value')
-        if field_key in dataset_fields:
-            preset = dataset_fields[field_key]
-            if preset == 'multiple_text' and field_value:
-                try:
-                    dataset_dict[field_key] = json.loads(field_value)
-                except JSONDecodeError:
-                    dataset_dict[field_key] = field_value
-            elif preset == 'date' and field_value:
-                dataset_dict[field_key] = convert_datetime_string(field_value)
-            else:
-                dataset_dict[field_key] = field_value
-
-    # Remove the extras that have been populated into the declared schema fields
-    dataset_dict['extras'] = [d for d in dataset_dict['extras'] if d.get('key') not in dataset_fields]
-
-    return dataset_dict
-
 
 def validate_tags(values_list: List[Dict]) -> List:
     """
@@ -85,31 +45,18 @@ def validate_tags(values_list: List[Dict]) -> List:
     return tags
 
 
-def convert_datetime_string(date_value: str) -> datetime:
-    """
-    Converts datestrings (e.g. '2023-10-06T10:12:55.614000+00:00') to datetime class instance
-    """
-    try:
-        date_value = dateparser.parse(date_value, yearfirst=True)
-        if date_value.tzinfo is not None:
-            date_value = date_value.astimezone(timezone.utc)
-    except ParserError:
-        log.error(f'A date field string value {date_value} can not be parsed to a date')
-    return date_value
-
-
-class FAIRDataPointDCATAPProfile(EuropeanDCATAP2Profile):
+class FAIRDataPointDCATAPProfile(EuropeanDCATAP3Profile):
     """
     An RDF profile for FAIR data points
     """
 
     def parse_dataset(self, dataset_dict: Dict, dataset_ref: URIRef) -> Dict:
         super(FAIRDataPointDCATAPProfile, self).parse_dataset(dataset_dict, dataset_ref)
-        dataset_dict = self._parse_contact_point(dataset_dict, dataset_ref)
 
+        #dataset_dict = self._parse_contact_point(dataset_dict, dataset_ref)
         dataset_dict = self._parse_creator(dataset_dict, dataset_ref)
 
-        dataset_dict = _convert_extras_to_declared_schema_fields(dataset_dict)
+       ## dataset_dict = _convert_extras_to_declared_schema_fields(dataset_dict)
 
         dataset_dict['tags'] = validate_tags(dataset_dict['tags'])
 
@@ -123,10 +70,10 @@ class FAIRDataPointDCATAPProfile(EuropeanDCATAP2Profile):
 
         for agent in self.g.objects(subject, predicate):
             contact = {
-                'contact_uri': (str(agent) if isinstance(agent, URIRef)
+                'uri': (str(agent) if isinstance(agent, URIRef)
                         else self._get_vcard_property_value(agent, VCARD.hasUID)),
-                'contact_name': self._get_vcard_property_value(agent, VCARD.hasFN, VCARD.fn),
-                'contact_email': self._without_mailto(self._get_vcard_property_value(agent, VCARD.hasEmail))}
+                'name': self._get_vcard_property_value(agent, VCARD.hasFN, VCARD.fn),
+                'email': self._without_mailto(self._get_vcard_property_value(agent, VCARD.hasEmail))}
 
             contact_list.append(contact)
 
@@ -156,16 +103,16 @@ class FAIRDataPointDCATAPProfile(EuropeanDCATAP2Profile):
             creator_name = graph.value(creator_ref, FOAF.name)
 
             if creator_identifier:
-                creator['creator_identifier'] = str(creator_identifier)
+                creator['identifier'] = str(creator_identifier)
             if creator_name:
-                creator['creator_name'] = str(creator_name)
+                creator['name'] = str(creator_name)
             else:
                 # If the creator is a URI, use it as the identifier
                 if isinstance(creator_ref, URIRef):
-                    creator['creator_identifier'] = str(creator_ref)
-                    creator['creator_name'] = str(creator_ref)
+                    creator['identifier'] = str(creator_ref)
+                    creator['name'] = str(creator_ref)
                 else:
-                    creator['creator_name'] = str(creator_ref)
+                    creator['name'] = str(creator_ref)
 
             creators.append(creator)
 

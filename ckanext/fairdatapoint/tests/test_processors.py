@@ -7,6 +7,8 @@ from datetime import datetime
 from dateutil.tz import tzutc
 from pathlib import Path
 from unittest.mock import patch
+
+from docopt import extras
 from rdflib import Graph
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
     FairDataPointRecordToPackageConverter)
@@ -45,21 +47,23 @@ class TestProcessors:
                  "http://purl.org/zonmw/generic/10006;"
                  "dataset=https://covid19initiatives.health-ri.nl/p/Project/27866022694497978",
             record=data)
-        expected_dataset = dict(extras=[
-            {"key": "uri", "value": "https://covid19initiatives.health-ri.nl/p/Project/27866022694497978"}
-        ], resources=[], title="COVID-NL cohort MUMC+", notes="Clinical data of MUMC COVID-NL cohort", tags=[],
-            license_id="", identifier="27866022694497978",
-            has_version=["https://repo.metadatacenter.org/template-instances/2836bf1c-76e9-44e7-a65e-80e9ca63025a"],
-            contact_point=[
-                {
-                    "contact_name": "N.K. De Vries",
-                    "contact_uri": "https://orcid.org/0000-0002-4348-707X",
-                    "contact_email": "",
-                }
-            ], creator=[{"creator_identifier": "https://orcid.org/0000-0002-0180-3636",
-                         "creator_name": "https://orcid.org/0000-0002-0180-3636"}],
-            publisher_uri="https://opal.health-ri.nl/pub/", temporal_start=datetime(2020, 1, 1, 0, 0),
-            temporal_end=datetime(2025, 12, 31, 0, 0))
+        expected_dataset = dict(extras=[], uri="https://covid19initiatives.health-ri.nl/p/Project/27866022694497978",
+                                resources=[], title="COVID-NL cohort MUMC+",
+                                notes="Clinical data of MUMC COVID-NL cohort", tags=[],
+                                license_id="", identifier="27866022694497978",
+                                has_version=[
+                                    "https://repo.metadatacenter.org/template-instances/2836bf1c-76e9-44e7-a65e-80e9ca63025a"],
+                                contact=[
+                                    {
+                                        "name": "N.K. De Vries"
+                                    }
+                                ], creator=[{"identifier": "https://orcid.org/0000-0002-0180-3636",
+                                             "name": "https://orcid.org/0000-0002-0180-3636"}],
+                                publisher=[
+                                    {
+                                        "uri": "https://opal.health-ri.nl/pub/"
+                                    }
+                                ], temporal_start='2020-01-01', temporal_end='2025-12-31')
         assert actual_dataset == expected_dataset
 
     def test_fdp_record_converter_catalog_dict(self):
@@ -68,23 +72,27 @@ class TestProcessors:
         actual = fdp_record_to_package.record_to_package(
             guid="catalog=https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d",
             record=data)
+
         expected = {
+            "uri": "https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d",
             "access_rights": "https://fair.healthinformationportal.eu/catalog/"
                              "1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d#accessRights",
             "conforms_to": ["https://fair.healthinformationportal.eu/profile/"
                             "a0949e72-4466-4d53-8900-9436d1049a4b"],
-            "extras": [{"key": "uri",
-                        "value": "https://fair.healthinformationportal.eu/catalog/"
-                                 "1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d"},
-                       ],
+            "extras": [],
             "has_version": ["1.0"],
-            "issued": datetime(2023, 10, 6, 10, 12, 55, 614000, tzinfo=tzutc()),
+            "issued": '2023-10-06T10:12:55.614000+00:00',
             "language": ["http://id.loc.gov/vocabulary/iso639-1/en"],
             "license_id": "",
-            "modified": datetime(2023, 10, 6, 10, 12, 55, 614000, tzinfo=tzutc()),
-            "publisher_name": "Automatic",
+            "modified": '2023-10-06T10:12:55.614000+00:00',
+            "publisher": [
+                {
+                    "name": "Automatic"
+                }
+            ],
             "resources": [],
             "tags": [],
             "title": "Slovenia National Node"
         }
+
         assert actual == expected
