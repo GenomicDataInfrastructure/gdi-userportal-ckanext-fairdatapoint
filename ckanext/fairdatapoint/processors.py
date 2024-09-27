@@ -35,7 +35,7 @@ class FairDataPointRDFParser(RDFParser):
         for catalog_ref in self._catalogs():
             catalog_dict = {}
             for profile_class in self._profiles:
-                profile = profile_class(self.g, self.compatibility_mode)
+                profile = profile_class(graph= self.g,compatibility_mode = self.compatibility_mode)
                 profile.parse_dataset(catalog_dict, catalog_ref)
 
             yield catalog_dict
