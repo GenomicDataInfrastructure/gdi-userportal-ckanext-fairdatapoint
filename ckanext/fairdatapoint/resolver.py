@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import logging
+from urllib.parse import urlparse
 
 import requests
 from ckan.plugins import toolkit
@@ -151,9 +152,9 @@ class label_resolver:
             else:
                 ckan_translation_list.append(
                     {
-                        "term": "en",
+                        "term": str(subject_uri),
                         "term_translation": label,
-                        "lang_code": language,
+                        "lang_code": "en",  # FIXME hardcoded default language
                     }
                 )
 
@@ -184,3 +185,60 @@ def get_list_unresolved_terms(terms: list[str]) -> list[str]:
     unknown_terms = term_set - known_terms
 
     return list(unknown_terms)
+
+
+def _is_absolute_uri(uri: str) -> bool:
+    """Checks if a given URI is an absolute http or https URI.
+
+    Checks for three things:
+    1. Scheme is either `http` or `https`
+    2. A netloc is defined (domain name)
+    3. A path is defined
+
+    Parameters
+    ----------
+    uri : str
+        URI that needs to be checked
+
+    Returns
+    -------
+    bool
+        True if resolvale URI, False if not
+    """
+    parsed_uri = urlparse(uri)
+    try:
+        return (
+            parsed_uri.scheme in ["http", "https"]
+            and parsed_uri.netloc
+            and parsed_uri.path
+        )
+    # If URI cannot be parsed we can safely assume it's invalid
+    except ValueError:
+        return False
+
+
+def terms_in_package_dict(package_dict: dict) -> list[str]:
+    """Extracts list of all terms from a dictionary that could theoretically be resolved
+
+    Parameters
+    ----------
+    package_dict : dict
+        Package dictionary that is harvested and parsed by a profile
+
+    Returns
+    -------
+    list[str]
+        List of URIs that could theoretically be resolved
+    """
+    term_list = []
+
+    for key in PACKAGE_REPLACE_FIELDS:
+        if values := package_dict.get(key):
+            if isinstance(values, list):
+                term_list.extend(values)
+            elif values is str:
+                term_list.append(values)
+
+    # Now filter if URI and only return URIs
+    valid_term_list = [term for term in term_list if _is_absolute_uri(term)]
+    return valid_term_list

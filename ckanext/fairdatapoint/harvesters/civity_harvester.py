@@ -14,6 +14,11 @@ from abc import abstractmethod
 import ckan.plugins.toolkit as toolkit
 from ckan import model
 
+from ckanext.fairdatapoint.resolver import (
+    get_list_unresolved_terms,
+    label_resolver,
+    terms_in_package_dict,
+)
 from ckanext.harvest.harvesters import HarvesterBase
 from ckanext.harvest.model import HarvestObject
 from ckanext.harvest.model import HarvestObjectExtra as HOExtra
@@ -21,6 +26,9 @@ from ckanext.harvest.model import HarvestObjectExtra as HOExtra
 ID = "id"
 
 log = logging.getLogger(__name__)
+
+# TODO move this to be a harvester setting
+RESOLVE_LABELS = True
 
 
 def text_traceback():
@@ -400,6 +408,32 @@ class CivityHarvester(HarvesterBase):
                 resources, package_id, package_dict["title"], context, harvest_object
             ):
                 return False
+            # Also update labels in case of success
+            if RESOLVE_LABELS:
+                log.debug("Label resolving is requested")
+                translation_list = []
+                total_terms = terms_in_package_dict(package_dict)
+                unresolved_terms = get_list_unresolved_terms(total_terms)
+                if unresolved_terms:
+                    log.debug("There are %d unresolved terms", len(unresolved_terms))
+
+                    resolver = label_resolver()
+                    for term in unresolved_terms:
+                        extra_translations = resolver.load_and_translate_uri(term)
+                        translation_list.extend(extra_translations)
+
+                    log.debug("Resolved %d labels", len(translation_list))
+
+                    # Check if there is actually translations in the list
+                    if translation_list:
+                        # term_translation_update is a privileged function
+                        # Thank god CKAN is like Hollywood OS and we can just override
+                        toolkit.get_action("term_translation_update_many")(
+                            {"ignore_auth": True, "defer_commit": True},
+                            {"data": translation_list},
+                        )
+                else:
+                    log.debug("There are no unresolved terms!")
         else:
             return False
 
