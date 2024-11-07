@@ -6,7 +6,6 @@ from __future__ import annotations
 import logging
 from urllib.parse import urlparse
 
-import requests
 from ckan.plugins import toolkit
 from rdflib import RDF, RDFS, SDO, SKOS, Graph, URIRef
 
@@ -20,9 +19,10 @@ PACKAGE_REPLACE_FIELDS = [
     "spatial_uri",
     "theme",
 ]
+DEFAULT_LABEL_LANG = "en"
 
 
-class label_resolver:
+class resolvable_label_resolver:
     """Generic label resolver class
 
     This class implements a generic label resolver. It consists of three functions:
@@ -108,8 +108,11 @@ class label_resolver:
         if empty_graph:
             del self.g
             self.g = Graph()
-        self.g.parse(uri)
-
+        try:
+            self.g.parse(uri)
+        # RDFlib can throw a LOT of exceptions and they are not all
+        except Exception:
+            pass
         return self.g
 
     def load_and_translate_uri(self, subject_uri: str | URIRef) -> list[dict[str, str]]:
@@ -154,7 +157,7 @@ class label_resolver:
                     {
                         "term": str(subject_uri),
                         "term_translation": label,
-                        "lang_code": "en",  # FIXME hardcoded default language
+                        "lang_code": DEFAULT_LABEL_LANG,  # FIXME hardcoded default language
                     }
                 )
 
@@ -242,3 +245,37 @@ def terms_in_package_dict(package_dict: dict) -> list[str]:
     # Now filter if URI and only return URIs
     valid_term_list = [term for term in term_list if _is_absolute_uri(term)]
     return valid_term_list
+
+
+def resolve_labels(package_dict):
+    """Resolves labels and updates the database
+
+    Parameters
+    ----------
+    package_dict : dict
+        Package dictionary from harvester
+    """
+    log.debug("Label resolving is requested")
+    translation_list = []
+    total_terms = terms_in_package_dict(package_dict)
+    unresolved_terms = get_list_unresolved_terms(total_terms)
+    if unresolved_terms:
+        log.debug("There are %d unresolved terms", len(unresolved_terms))
+
+        resolver = resolvable_label_resolver()
+        for term in unresolved_terms:
+            extra_translations = resolver.load_and_translate_uri(term)
+            translation_list.extend(extra_translations)
+
+        log.debug("Resolved %d labels", len(translation_list))
+
+        # Check if there is actually translations in the list
+        if translation_list:
+            # term_translation_update is a privileged function
+            # Thank god CKAN is like Hollywood OS and we can just override
+            toolkit.get_action("term_translation_update_many")(
+                {"ignore_auth": True, "defer_commit": True},
+                {"data": translation_list},
+            )
+    else:
+        log.debug("There are no unresolved terms!")
