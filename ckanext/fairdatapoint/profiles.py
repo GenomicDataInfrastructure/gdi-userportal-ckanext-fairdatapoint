@@ -71,6 +71,8 @@ class FAIRDataPointDCATAPProfile(EuropeanDCATAP3Profile):
 
         dataset_dict["tags"] = validate_tags(dataset_dict["tags"])
 
+        dataset_dict = self._fix_wikidata_uris(dataset_dict, PACKAGE_REPLACE_FIELDS)
+
         return dataset_dict
 
     def _contact_point_details(self, subject, predicate) -> List:
@@ -184,5 +186,5 @@ class FAIRDataPointDCATAPProfile(EuropeanDCATAP3Profile):
                     new_value = [self._rewrite_wikidata_url(uri) for uri in value]
                 else:
                     new_value = self._rewrite_wikidata_url(value)
-            dataset_dict[field] = new_value
+                dataset_dict[field] = new_value
         return dataset_dict
