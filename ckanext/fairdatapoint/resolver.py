@@ -40,7 +40,7 @@ class resolvable_label_resolver:
     some caching to make sure it doens't keep trying to load 1 million triples for every label.
     """
 
-    g = Graph()
+    label_graph = Graph()
 
     def literal_dict_from_graph(self, subject: str | URIRef) -> dict:
         """Turns a Graph into a dictionary with key: language, value: label
@@ -80,9 +80,9 @@ class resolvable_label_resolver:
         # I am aware the dictionary gets overwritten. I am assuming SKOS.prefLabel is the most
         # "authortive" one and therefore it will overwrite the preceding labels.
         for label_predicate in [SDO.name, RDFS.label, SKOS.prefLabel]:
-            if (subject, label_predicate, None) in self.g:
+            if (subject, label_predicate, None) in self.label_graph:
                 # Check if it contains label_predicate for the subject
-                for x in self.g.objects(
+                for x in self.label_graph.objects(
                     subject=subject,
                     predicate=label_predicate,
                 ):
@@ -106,14 +106,14 @@ class resolvable_label_resolver:
             Loaded Graph
         """
         if empty_graph:
-            del self.g
-            self.g = Graph()
+            del self.label_graph
+            self.label_graph = Graph()
         try:
-            self.g.parse(uri)
+            self.label_graph.parse(uri)
         # RDFlib can throw a LOT of exceptions and they are not all
         except Exception:
             pass
-        return self.g
+        return self.label_graph
 
     def load_and_translate_uri(self, subject_uri: str | URIRef) -> list[dict[str, str]]:
         """Loads the RDF graph for a given subject, extracts labels a
