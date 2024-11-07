@@ -5,18 +5,15 @@
 
 
 import logging
-
-import requests
-
-from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
-from ckanext.fairdatapoint.harvesters.domain.fair_data_point import FairDataPoint
-
-from requests import JSONDecodeError, HTTPError
-
-from rdflib import Namespace, URIRef, Literal, DCAT, DCTERMS, Graph, RDF, BNode
-from rdflib.term import Node
 from typing import Dict, Iterable, Union
 
+import requests
+from rdflib import DCAT, DCTERMS, RDF, BNode, Graph, Literal, Namespace, URIRef
+from rdflib.term import Node
+from requests import HTTPError, JSONDecodeError
+
+from ckanext.fairdatapoint.harvesters.domain.fair_data_point import FairDataPoint
+from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 
 LDP = Namespace("http://www.w3.org/ns/ldp#")
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")

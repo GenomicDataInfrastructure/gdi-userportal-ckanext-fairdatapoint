@@ -3,14 +3,14 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-import logging
-import requests
 import encodings
+import logging
+from typing import Union
 
+import requests
 from rdflib import Graph, URIRef
 from rdflib.exceptions import ParserError
-from requests.exceptions import HTTPError, ConnectionError, Timeout, RequestException
-from typing import Union
+from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
 
 log = logging.getLogger(__name__)
 
@@ -31,7 +31,9 @@ class FairDataPoint:
         graph = Graph()
         data = self._get_data(path)
         if data is None:
-            log.warning(f"No data was received from FDP {self.fdp_end_point} request {path}")
+            log.warning(
+                f"No data was received from FDP {self.fdp_end_point} request {path}"
+            )
         else:
             try:
                 graph.parse(data=data)
@@ -41,9 +43,7 @@ class FairDataPoint:
 
     @staticmethod
     def _get_data(path: Union[str, URIRef]) -> Union[str, None]:
-        headers = {
-            'Accept': 'text/turtle'
-        }
+        headers = {"Accept": "text/turtle"}
         try:
             response = requests.request("GET", path, headers=headers)
             response.encoding = encodings.utf_8.getregentry().name

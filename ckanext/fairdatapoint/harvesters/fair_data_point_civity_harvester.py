@@ -4,6 +4,8 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import logging
 
+from ckan.plugins import toolkit
+
 from ckanext.fairdatapoint.harvesters.civity_harvester import CivityHarvester
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import (
     FairDataPointRecordProvider,
@@ -11,7 +13,6 @@ from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider imp
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
     FairDataPointRecordToPackageConverter,
 )
-from ckan.plugins import toolkit
 
 PROFILE = "profile"
 HARVEST_CATALOG = "harvest_catalogs"

@@ -3,9 +3,10 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-from rdflib import RDF, DCAT
+from typing import Dict, Iterable
+
+from rdflib import DCAT, RDF
 from rdflib.term import Node
-from typing import Iterable, Dict
 
 from ckanext.dcat.processors import RDFParser
 
@@ -35,7 +36,9 @@ class FairDataPointRDFParser(RDFParser):
         for catalog_ref in self._catalogs():
             catalog_dict = {}
             for profile_class in self._profiles:
-                profile = profile_class(graph= self.g,compatibility_mode = self.compatibility_mode)
+                profile = profile_class(
+                    graph=self.g, compatibility_mode=self.compatibility_mode
+                )
                 profile.parse_dataset(catalog_dict, catalog_ref)
 
             yield catalog_dict
