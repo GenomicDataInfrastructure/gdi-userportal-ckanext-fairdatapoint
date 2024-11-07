@@ -1,0 +1,407 @@
+# SPDX-FileCopyrightText: 2024 Wikidata, contributors
+#
+# SPDX-License-Identifier: CC-BY-SA-4.0
+
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ontolex: <http://www.w3.org/ns/lemon/ontolex#> .
+@prefix dct: <http://purl.org/dc/terms/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix wikibase: <http://wikiba.se/ontology#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix schema: <http://schema.org/> .
+@prefix cc: <http://creativecommons.org/ns#> .
+@prefix geo: <http://www.opengis.net/ont/geosparql#> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix wd: <http://www.wikidata.org/entity/> .
+@prefix data: <https://www.wikidata.org/wiki/Special:EntityData/> .
+@prefix s: <http://www.wikidata.org/entity/statement/> .
+@prefix ref: <http://www.wikidata.org/reference/> .
+@prefix v: <http://www.wikidata.org/value/> .
+@prefix wdt: <http://www.wikidata.org/prop/direct/> .
+@prefix wdtn: <http://www.wikidata.org/prop/direct-normalized/> .
+@prefix p: <http://www.wikidata.org/prop/> .
+@prefix ps: <http://www.wikidata.org/prop/statement/> .
+@prefix psv: <http://www.wikidata.org/prop/statement/value/> .
+@prefix psn: <http://www.wikidata.org/prop/statement/value-normalized/> .
+@prefix pq: <http://www.wikidata.org/prop/qualifier/> .
+@prefix pqv: <http://www.wikidata.org/prop/qualifier/value/> .
+@prefix pqn: <http://www.wikidata.org/prop/qualifier/value-normalized/> .
+@prefix pr: <http://www.wikidata.org/prop/reference/> .
+@prefix prv: <http://www.wikidata.org/prop/reference/value/> .
+@prefix prn: <http://www.wikidata.org/prop/reference/value-normalized/> .
+@prefix wdno: <http://www.wikidata.org/prop/novalue/> .
+
+data:Q29937289 a schema:Dataset ;
+	schema:about wd:Q29937289 ;
+	cc:license <http://creativecommons.org/publicdomain/zero/1.0/> ;
+	schema:softwareVersion "1.0.0" ;
+	schema:version "2027337723"^^xsd:integer ;
+	schema:dateModified "2023-12-10T13:41:17Z"^^xsd:dateTime ;
+	wikibase:statements "7"^^xsd:integer ;
+	wikibase:sitelinks "0"^^xsd:integer ;
+	wikibase:identifiers "0"^^xsd:integer .
+
+wd:Q29937289 a wikibase:Item ;
+	wdt:P279 wd:Q2352616 ;
+	wdt:P1709 <http://www.w3.org/ns/dcat#Catalog>,
+		<https://schema.org/DataCatalog> ;
+	wdt:P1889 wd:Q1147639,
+		wd:Q61314299 ;
+	wdt:P1269 wd:Q6822246 ;
+	p:P279 s:Q29937289-ab428a37-4a9b-8b53-8171-603d2baf8e2e .
+
+s:Q29937289-ab428a37-4a9b-8b53-8171-603d2baf8e2e a wikibase:Statement ;
+	wikibase:rank wikibase:DeprecatedRank ;
+	ps:P279 wd:Q16889133 ;
+	pq:P2241 wd:Q41755623 .
+
+wd:Q29937289 p:P279 s:Q29937289-7d1575d4-4793-5f93-e52d-ff855c791f74 .
+
+s:Q29937289-7d1575d4-4793-5f93-e52d-ff855c791f74 a wikibase:Statement,
+		wikibase:BestRank ;
+	wikibase:rank wikibase:NormalRank ;
+	ps:P279 wd:Q2352616 .
+
+wd:Q29937289 p:P1709 s:Q29937289-499b7eea-400b-bfc6-aa27-ad51f673d9fe .
+
+s:Q29937289-499b7eea-400b-bfc6-aa27-ad51f673d9fe a wikibase:Statement,
+		wikibase:BestRank ;
+	wikibase:rank wikibase:NormalRank ;
+	ps:P1709 <http://www.w3.org/ns/dcat#Catalog> .
+
+wd:Q29937289 p:P1709 s:Q29937289-75da1b5d-43ee-dc59-ae90-e53c799eb9f8 .
+
+s:Q29937289-75da1b5d-43ee-dc59-ae90-e53c799eb9f8 a wikibase:Statement,
+		wikibase:BestRank ;
+	wikibase:rank wikibase:NormalRank ;
+	ps:P1709 <https://schema.org/DataCatalog> .
+
+wd:Q29937289 p:P1889 s:Q29937289-63cf8d42-42e4-3258-0d6f-6ef6da6a213b .
+
+s:Q29937289-63cf8d42-42e4-3258-0d6f-6ef6da6a213b a wikibase:Statement,
+		wikibase:BestRank ;
+	wikibase:rank wikibase:NormalRank ;
+	ps:P1889 wd:Q1147639 .
+
+wd:Q29937289 p:P1889 s:Q29937289-6bcc1b05-40ee-99ff-3bb9-b0fa24c71323 .
+
+s:Q29937289-6bcc1b05-40ee-99ff-3bb9-b0fa24c71323 a wikibase:Statement,
+		wikibase:BestRank ;
+	wikibase:rank wikibase:NormalRank ;
+	ps:P1889 wd:Q61314299 .
+
+wd:Q29937289 p:P1269 s:Q29937289-3fbf6ff7-4a7c-bfcb-bb47-33867152eeb7 .
+
+s:Q29937289-3fbf6ff7-4a7c-bfcb-bb47-33867152eeb7 a wikibase:Statement,
+		wikibase:BestRank ;
+	wikibase:rank wikibase:NormalRank ;
+	ps:P1269 wd:Q6822246 .
+
+wd:Q29937289 rdfs:label "data catalog"@en ;
+	skos:prefLabel "data catalog"@en ;
+	schema:name "data catalog"@en ;
+	rdfs:label "Datenkatalog"@de ;
+	skos:prefLabel "Datenkatalog"@de ;
+	schema:name "Datenkatalog"@de ;
+	rdfs:label "datakatalog"@nb ;
+	skos:prefLabel "datakatalog"@nb ;
+	schema:name "datakatalog"@nb ;
+	rdfs:label "catálogo de datos"@gl ;
+	skos:prefLabel "catálogo de datos"@gl ;
+	schema:name "catálogo de datos"@gl ;
+	rdfs:label "catálogo de datos"@es ;
+	skos:prefLabel "catálogo de datos"@es ;
+	schema:name "catálogo de datos"@es ;
+	rdfs:label "datacatalogus"@nl ;
+	skos:prefLabel "datacatalogus"@nl ;
+	schema:name "datacatalogus"@nl ;
+	rdfs:label "קטלוג נתונים"@he ;
+	skos:prefLabel "קטלוג נתונים"@he ;
+	schema:name "קטלוג נתונים"@he ;
+	rdfs:label "бирелмәләр каталогы"@tt ;
+	skos:prefLabel "бирелмәләр каталогы"@tt ;
+	schema:name "бирелмәләр каталогы"@tt ;
+	rdfs:label "бирелмәләр каталогы"@tt-cyrl ;
+	skos:prefLabel "бирелмәләр каталогы"@tt-cyrl ;
+	schema:name "бирелмәләр каталогы"@tt-cyrl ;
+	rdfs:label "каталог данных"@ru ;
+	skos:prefLabel "каталог данных"@ru ;
+	schema:name "каталог данных"@ru ;
+	rdfs:label "catàleg de dades"@ca ;
+	skos:prefLabel "catàleg de dades"@ca ;
+	schema:name "catàleg de dades"@ca ;
+	rdfs:label "data catalog"@it ;
+	skos:prefLabel "data catalog"@it ;
+	schema:name "data catalog"@it ;
+	rdfs:label "catalogue de données"@fr ;
+	skos:prefLabel "catalogue de données"@fr ;
+	schema:name "catalogue de données"@fr ;
+	rdfs:label "каталёг зьвестак"@be-tarask ;
+	skos:prefLabel "каталёг зьвестак"@be-tarask ;
+	schema:name "каталёг зьвестак"@be-tarask ;
+	rdfs:label "catálogo de dados"@pt ;
+	skos:prefLabel "catálogo de dados"@pt ;
+	schema:name "catálogo de dados"@pt ;
+	rdfs:label "datakatalog"@nn ;
+	skos:prefLabel "datakatalog"@nn ;
+	schema:name "datakatalog"@nn ;
+	rdfs:label "データ・カタログ"@ja ;
+	skos:prefLabel "データ・カタログ"@ja ;
+	schema:name "データ・カタログ"@ja ;
+	rdfs:label "каталог даних"@uk ;
+	skos:prefLabel "каталог даних"@uk ;
+	schema:name "каталог даних"@uk ;
+	rdfs:label "podatkovni katalog"@sl ;
+	skos:prefLabel "podatkovni katalog"@sl ;
+	schema:name "podatkovni katalog"@sl ;
+	rdfs:label "veri katalogu"@tr ;
+	skos:prefLabel "veri katalogu"@tr ;
+	schema:name "veri katalogu"@tr ;
+	rdfs:label "datuma katalogo"@eo ;
+	skos:prefLabel "datuma katalogo"@eo ;
+	schema:name "datuma katalogo"@eo ;
+	schema:description "curated collection of metadata about datasets"@en,
+		"colección de metadatos sobre conxuntos de datos (datasets)"@gl,
+		"collection de métadonnées à propos de jeux de données"@fr,
+		"арганізаваная калекцыя мэтазьвестак пра наборы зьвестак"@be-tarask,
+		"kuratert samling av metadata om datasett"@nb,
+		"курирувана колекція метаданих про набори даних"@uk ;
+	skos:altLabel "catalogue"@en,
+		"catalog"@en,
+		"katalog"@nb,
+		"каталёг"@be-tarask,
+		"каталог"@uk,
+		"katalog podatkov"@sl,
+		"katalog"@sl .
+
+wd:Q2352616 a wikibase:Item ;
+	rdfs:label "catalogue"@en ;
+	skos:prefLabel "catalogue"@en ;
+	schema:name "catalogue"@en ;
+	schema:description "enumeration of items systematically arranged for a specific purpose, usually with brief descriptive information included in each entry"@en .
+
+wd:P279 a wikibase:Property ;
+	rdfs:label "subclass of"@en ;
+	skos:prefLabel "subclass of"@en ;
+	schema:name "subclass of"@en ;
+	schema:description "this item is a subclass (subset) of that item; all instances of this item are instances of that item; different from P31 (instance of), e.g.: volcano is a subclass of mountain (and an instance of volcanic landform); K2 is an instance of mountain"@en ;
+	wikibase:propertyType <http://wikiba.se/ontology#WikibaseItem> ;
+	wikibase:directClaim wdt:P279 ;
+	wikibase:claim p:P279 ;
+	wikibase:statementProperty ps:P279 ;
+	wikibase:statementValue psv:P279 ;
+	wikibase:qualifier pq:P279 ;
+	wikibase:qualifierValue pqv:P279 ;
+	wikibase:reference pr:P279 ;
+	wikibase:referenceValue prv:P279 ;
+	wikibase:novalue wdno:P279 .
+
+p:P279 a owl:ObjectProperty .
+
+psv:P279 a owl:ObjectProperty .
+
+pqv:P279 a owl:ObjectProperty .
+
+prv:P279 a owl:ObjectProperty .
+
+wdt:P279 a owl:ObjectProperty .
+
+ps:P279 a owl:ObjectProperty .
+
+pq:P279 a owl:ObjectProperty .
+
+pr:P279 a owl:ObjectProperty .
+
+wdno:P279 a owl:Class ;
+	owl:complementOf _:55a0a46aa65f620d17fa7dc3671280d4 .
+
+_:55a0a46aa65f620d17fa7dc3671280d4 a owl:Restriction ;
+	owl:onProperty wdt:P279 ;
+	owl:someValuesFrom owl:Thing .
+
+wd:P1709 a wikibase:Property ;
+	rdfs:label "equivalent class"@en ;
+	skos:prefLabel "equivalent class"@en ;
+	schema:name "equivalent class"@en ;
+	schema:description "equivalent class in other ontologies (use property URI)"@en ;
+	wikibase:propertyType <http://wikiba.se/ontology#Url> ;
+	wikibase:directClaim wdt:P1709 ;
+	wikibase:claim p:P1709 ;
+	wikibase:statementProperty ps:P1709 ;
+	wikibase:statementValue psv:P1709 ;
+	wikibase:qualifier pq:P1709 ;
+	wikibase:qualifierValue pqv:P1709 ;
+	wikibase:reference pr:P1709 ;
+	wikibase:referenceValue prv:P1709 ;
+	wikibase:novalue wdno:P1709 .
+
+p:P1709 a owl:ObjectProperty .
+
+psv:P1709 a owl:ObjectProperty .
+
+pqv:P1709 a owl:ObjectProperty .
+
+prv:P1709 a owl:ObjectProperty .
+
+wdt:P1709 a owl:ObjectProperty .
+
+ps:P1709 a owl:ObjectProperty .
+
+pq:P1709 a owl:ObjectProperty .
+
+pr:P1709 a owl:ObjectProperty .
+
+wdno:P1709 a owl:Class ;
+	owl:complementOf _:93c565e7ae0faaeda9bd92b52aafde14 .
+
+_:93c565e7ae0faaeda9bd92b52aafde14 a owl:Restriction ;
+	owl:onProperty wdt:P1709 ;
+	owl:someValuesFrom owl:Thing .
+
+wd:Q1147639 a wikibase:Item ;
+	rdfs:label "data dictionary"@en ;
+	skos:prefLabel "data dictionary"@en ;
+	schema:name "data dictionary"@en ;
+	schema:description "set of metadata that contains definitions and representations of data elements"@en .
+
+wd:P1889 a wikibase:Property ;
+	rdfs:label "different from"@en ;
+	skos:prefLabel "different from"@en ;
+	schema:name "different from"@en ;
+	schema:description "item that is different from another item, with which it may be confused"@en ;
+	wikibase:propertyType <http://wikiba.se/ontology#WikibaseItem> ;
+	wikibase:directClaim wdt:P1889 ;
+	wikibase:claim p:P1889 ;
+	wikibase:statementProperty ps:P1889 ;
+	wikibase:statementValue psv:P1889 ;
+	wikibase:qualifier pq:P1889 ;
+	wikibase:qualifierValue pqv:P1889 ;
+	wikibase:reference pr:P1889 ;
+	wikibase:referenceValue prv:P1889 ;
+	wikibase:novalue wdno:P1889 .
+
+p:P1889 a owl:ObjectProperty .
+
+psv:P1889 a owl:ObjectProperty .
+
+pqv:P1889 a owl:ObjectProperty .
+
+prv:P1889 a owl:ObjectProperty .
+
+wdt:P1889 a owl:ObjectProperty .
+
+ps:P1889 a owl:ObjectProperty .
+
+pq:P1889 a owl:ObjectProperty .
+
+pr:P1889 a owl:ObjectProperty .
+
+wdno:P1889 a owl:Class ;
+	owl:complementOf _:4fcc9ce770ae6fe14cb8672fb35a8bc9 .
+
+_:4fcc9ce770ae6fe14cb8672fb35a8bc9 a owl:Restriction ;
+	owl:onProperty wdt:P1889 ;
+	owl:someValuesFrom owl:Thing .
+
+wd:Q61314299 a wikibase:Item ;
+	rdfs:label "business glossary"@en ;
+	skos:prefLabel "business glossary"@en ;
+	schema:name "business glossary"@en .
+
+wd:Q6822246 a wikibase:Item ;
+	rdfs:label "metadata management"@en ;
+	skos:prefLabel "metadata management"@en ;
+	schema:name "metadata management"@en ;
+	schema:description "managing metadata about  content data in digital media"@en .
+
+wd:P1269 a wikibase:Property ;
+	rdfs:label "facet of"@en ;
+	skos:prefLabel "facet of"@en ;
+	schema:name "facet of"@en ;
+	schema:description "topic of which this item is an aspect; item that offers a broader perspective on the same topic"@en ;
+	wikibase:propertyType <http://wikiba.se/ontology#WikibaseItem> ;
+	wikibase:directClaim wdt:P1269 ;
+	wikibase:claim p:P1269 ;
+	wikibase:statementProperty ps:P1269 ;
+	wikibase:statementValue psv:P1269 ;
+	wikibase:qualifier pq:P1269 ;
+	wikibase:qualifierValue pqv:P1269 ;
+	wikibase:reference pr:P1269 ;
+	wikibase:referenceValue prv:P1269 ;
+	wikibase:novalue wdno:P1269 .
+
+p:P1269 a owl:ObjectProperty .
+
+psv:P1269 a owl:ObjectProperty .
+
+pqv:P1269 a owl:ObjectProperty .
+
+prv:P1269 a owl:ObjectProperty .
+
+wdt:P1269 a owl:ObjectProperty .
+
+ps:P1269 a owl:ObjectProperty .
+
+pq:P1269 a owl:ObjectProperty .
+
+pr:P1269 a owl:ObjectProperty .
+
+wdno:P1269 a owl:Class ;
+	owl:complementOf _:a498557c9680bd52a026c4a3e1e3a863 .
+
+_:a498557c9680bd52a026c4a3e1e3a863 a owl:Restriction ;
+	owl:onProperty wdt:P1269 ;
+	owl:someValuesFrom owl:Thing .
+
+wd:Q16889133 a wikibase:Item ;
+	rdfs:label "class"@en ;
+	skos:prefLabel "class"@en ;
+	schema:name "class"@en ;
+	schema:description "collection of items defined by common characteristics"@en .
+
+wd:Q41755623 a wikibase:Item ;
+	rdfs:label "incorrect value"@en ;
+	skos:prefLabel "incorrect value"@en ;
+	schema:name "incorrect value"@en ;
+	schema:description "Wikidata reason for deprecation"@en .
+
+wd:P2241 a wikibase:Property ;
+	rdfs:label "reason for deprecated rank"@en ;
+	skos:prefLabel "reason for deprecated rank"@en ;
+	schema:name "reason for deprecated rank"@en ;
+	schema:description "qualifier to indicate why a particular statement should have deprecated rank"@en ;
+	wikibase:propertyType <http://wikiba.se/ontology#WikibaseItem> ;
+	wikibase:directClaim wdt:P2241 ;
+	wikibase:claim p:P2241 ;
+	wikibase:statementProperty ps:P2241 ;
+	wikibase:statementValue psv:P2241 ;
+	wikibase:qualifier pq:P2241 ;
+	wikibase:qualifierValue pqv:P2241 ;
+	wikibase:reference pr:P2241 ;
+	wikibase:referenceValue prv:P2241 ;
+	wikibase:novalue wdno:P2241 .
+
+p:P2241 a owl:ObjectProperty .
+
+psv:P2241 a owl:ObjectProperty .
+
+pqv:P2241 a owl:ObjectProperty .
+
+prv:P2241 a owl:ObjectProperty .
+
+wdt:P2241 a owl:ObjectProperty .
+
+ps:P2241 a owl:ObjectProperty .
+
+pq:P2241 a owl:ObjectProperty .
+
+pr:P2241 a owl:ObjectProperty .
+
+wdno:P2241 a owl:Class ;
+	owl:complementOf _:fcd7b2b5fef47b34b991f1fe543dfcb2 .
+
+_:fcd7b2b5fef47b34b991f1fe543dfcb2 a owl:Restriction ;
+	owl:onProperty wdt:P2241 ;
+	owl:someValuesFrom owl:Thing .
