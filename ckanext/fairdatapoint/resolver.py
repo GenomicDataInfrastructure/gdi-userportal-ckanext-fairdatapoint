@@ -112,11 +112,11 @@ class resolvable_label_resolver:
             self.label_graph.parse(uri)
         # RDFlib can throw a LOT of exceptions and they are not all
         except Exception:
-            pass
+            log.info("Could not load Graph for URI %s", uri)
         return self.label_graph
 
     def load_and_translate_uri(self, subject_uri: str | URIRef) -> list[dict[str, str]]:
-        """Loads the RDF graph for a given subject, extracts labels a
+        """Loads the RDF graph for a given subject, extracts labels
 
         Parameters
         ----------
@@ -130,7 +130,6 @@ class resolvable_label_resolver:
         """
         self.load_graph(subject_uri)
         translation_dict = self.literal_dict_from_graph(subject_uri)
-
         ckan_translation_list = []
 
         """
@@ -208,16 +207,16 @@ def _is_absolute_uri(uri: str) -> bool:
     bool
         True if resolvale URI, False if not
     """
-    parsed_uri = urlparse(uri)
     try:
-        return (
-            parsed_uri.scheme in ["http", "https"]
-            and parsed_uri.netloc
-            and parsed_uri.path
-        )
-    # If URI cannot be parsed we can safely assume it's invalid
-    except ValueError:
+        # If URI cannot be parsed we can safely assume it's invalid
+        parsed_uri = urlparse(uri)
+    except (ValueError, AttributeError):
         return False
+
+    parsable = bool(
+        parsed_uri.scheme in ["http", "https"] and parsed_uri.netloc and parsed_uri.path
+    )
+    return parsable
 
 
 def terms_in_package_dict(package_dict: dict) -> list[str]:
@@ -239,7 +238,7 @@ def terms_in_package_dict(package_dict: dict) -> list[str]:
         if values := package_dict.get(key):
             if isinstance(values, list):
                 term_list.extend(values)
-            elif values is str:
+            elif isinstance(values, str) or isinstance(values, URIRef):
                 term_list.append(values)
 
     # Now filter if URI and only return URIs
