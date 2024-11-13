@@ -4,16 +4,9 @@
 from pathlib import Path
 from unittest.mock import patch
 
-import ckan
-import ckan.lib.create_test_data
-import ckan.model as model
-import ckan.tests.helpers as helpers
 import pytest
 import rdflib
-import requests_mock
-from ckan.tests.helpers import body_contains, call_action
 from rdflib import Graph
-from rdflib.compare import to_isomorphic
 
 from ckanext.fairdatapoint.resolver import (
     _is_absolute_uri,
@@ -165,19 +158,6 @@ class TestTermUpdates:
 
     @patch("ckan.plugins.toolkit.get_action")
     def test_unresolved_URIs(self, get_action):
-        data = [
-            {
-                "term": "http://example.com/uri1",
-                "term_translation": "moo",
-                "lang_code": "en",
-            },
-            {
-                "term": "http://example.com/uri1",
-                "term_translation": "boe",
-                "lang_code": "nl",
-            },
-        ]
-
         known_data = [
             {
                 "term": "http://example.com/uri1",

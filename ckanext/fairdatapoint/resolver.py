@@ -7,7 +7,7 @@ import logging
 from urllib.parse import urlparse
 
 from ckan.plugins import toolkit
-from rdflib import RDF, RDFS, SDO, SKOS, Graph, URIRef
+from rdflib import RDFS, SDO, SKOS, Graph, URIRef
 
 log = logging.getLogger(__name__)
 
@@ -293,11 +293,11 @@ def resolve_labels(package_dict: dict) -> int:
                 {"data": translation_list},
             )
 
-            if not "success" in updated_labels:
-                log.warn("Error updating labels: %s", updated_labels)
+            if "success" not in updated_labels:
+                log.warning("Error updating labels: %s", updated_labels)
 
             elif not (len(translation_list) == int(updated_labels["success"])):
-                log.warn(
+                log.warning(
                     "Of %d labels, only %d updated successfully",
                     len(translation_list),
                     updated_labels["success"],
