@@ -16,7 +16,7 @@ from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_c
 
 PROFILE = "profile"
 HARVEST_CATALOG = "harvest_catalogs"
-HARVEST_CATALOG_CONFIG = "ckanext.fairdatapoint.harvest_catalogs"
+# HARVEST_CATALOG_CONFIG = "ckanext.fairdatapoint.harvest_catalogs"
 
 log = logging.getLogger(__name__)
 
@@ -48,15 +48,6 @@ class FairDataPointCivityHarvester(CivityHarvester):
 
     @staticmethod
     def _get_harvest_catalog_setting(harvest_config_dict):
-        if HARVEST_CATALOG in harvest_config_dict:
-            log.debug("Using harvest_catalogs from harvest_config_dict")
-            harvest_catalog_setting = toolkit.asbool(
-                harvest_config_dict[HARVEST_CATALOG]
-            )
-        else:
-            log.debug("Using harvest_catalogs from global CKAN config")
-            harvest_catalog_setting = toolkit.asbool(
-                toolkit.config.get(HARVEST_CATALOG_CONFIG, False)
-            )
-        log.debug("Harvesting catalogs is set to %s", harvest_catalog_setting)
-        return harvest_catalog_setting
+        return FairDataPointCivityHarvester._get_harvester_setting(
+            harvest_config_dict, HARVEST_CATALOG, False
+        )

@@ -19,7 +19,13 @@ PACKAGE_REPLACE_FIELDS = [
     "spatial_uri",
     "theme",
 ]
+
+# Default language for a label if it is not defined (Literal without language tag)
 DEFAULT_LABEL_LANG = "en"
+
+# Languages to resolve labels in
+# TODO language codes should be dynamic
+RESOLVE_LANGUAGES = ("en", "nl")
 
 
 class resolvable_label_resolver:
@@ -28,7 +34,7 @@ class resolvable_label_resolver:
     This class implements a generic label resolver. It consists of three functions:
     1. load_graph
     2. literal_dict_from_graph
-    3. load_and_translate_uri
+    3. load_and_translate_uricov
 
     The functions are made for the generic case: assuming the subject URI is resolvable and will
     return an RDF document when accessed using content negotiation. This can work for some of the
@@ -163,7 +169,9 @@ class resolvable_label_resolver:
         return ckan_translation_list
 
 
-def get_list_unresolved_terms(terms: list[str]) -> list[str]:
+def get_list_unresolved_terms(
+    terms: list[str], languages=RESOLVE_LANGUAGES
+) -> list[str]:
     """This function gets a list of terms not known by CKAN, based on an input list
 
     Parameters
@@ -178,9 +186,8 @@ def get_list_unresolved_terms(terms: list[str]) -> list[str]:
     """
     term_set = set(terms)
 
-    # TODO language codes should be dynamic
     translation_table = toolkit.get_action("term_translation_show")(
-        {}, {"terms": term_set, "lang_codes": ("en", "nl")}
+        {}, {"terms": term_set, "lang_codes": languages}
     )
 
     known_terms = set(x["term"] for x in translation_table)
@@ -246,35 +253,61 @@ def terms_in_package_dict(package_dict: dict) -> list[str]:
     return valid_term_list
 
 
-def resolve_labels(package_dict):
+def resolve_labels(package_dict: dict) -> int:
     """Resolves labels and updates the database
 
     Parameters
     ----------
     package_dict : dict
         Package dictionary from harvester
+
+    Returns
+    -------
+    int
+        Number of successfully resolved labels, -1 if none needed to be resolved
+
     """
     log.debug("Label resolving is requested")
     translation_list = []
+
     total_terms = terms_in_package_dict(package_dict)
     unresolved_terms = get_list_unresolved_terms(total_terms)
+
     if unresolved_terms:
         log.debug("There are %d unresolved terms", len(unresolved_terms))
 
         resolver = resolvable_label_resolver()
+
         for term in unresolved_terms:
             extra_translations = resolver.load_and_translate_uri(term)
             translation_list.extend(extra_translations)
 
-        log.debug("Resolved %d labels", len(translation_list))
-
         # Check if there is actually translations in the list
         if translation_list:
+            log.debug("Resolved %d labels", len(translation_list))
+
             # term_translation_update is a privileged function
             # Thank god CKAN is like Hollywood OS and we can just override
-            toolkit.get_action("term_translation_update_many")(
+            updated_labels = toolkit.get_action("term_translation_update_many")(
                 {"ignore_auth": True, "defer_commit": True},
                 {"data": translation_list},
             )
+
+            if not "success" in updated_labels:
+                log.warn("Error updating labels: %s", updated_labels)
+
+            elif not (len(translation_list) == int(updated_labels["success"])):
+                log.warn(
+                    "Of %d labels, only %d updated successfully",
+                    len(translation_list),
+                    updated_labels["success"],
+                )
+            else:
+                log.debug("Updated %s labels in database", updated_labels["success"])
+                return len(translation_list)
+        else:
+            log.debug("No labels succesfully resolved")
+            return 0
     else:
         log.debug("There are no unresolved terms!")
+        return -1

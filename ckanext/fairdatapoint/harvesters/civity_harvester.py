@@ -24,7 +24,8 @@ ID = "id"
 log = logging.getLogger(__name__)
 
 # TODO move this to be a harvester setting
-RESOLVE_LABELS = True
+RESOLVE_LABELS = "harvest_catalogs"
+RESOLVE_LABELS_SETTING = "ckanext.fairdatapoint.resolve_labels"
 
 
 def text_traceback():
@@ -405,7 +406,7 @@ class CivityHarvester(HarvesterBase):
             ):
                 return False
             # Also update labels in case of success
-            if RESOLVE_LABELS:
+            if self._get_harvester_setting(harvest_config_dict=harvest_object.config):
                 resolve_labels(package_dict)
         else:
             return False
@@ -629,3 +630,15 @@ class CivityHarvester(HarvesterBase):
             name = package.name
 
         return name
+
+    @staticmethod
+    def _get_harvester_setting(harvest_config_dict, config_name, default_value):
+        if config_name in harvest_config_dict:
+            harvester_setting = toolkit.asbool(harvest_config_dict[config_name])
+        else:
+            harvester_setting = toolkit.asbool(
+                toolkit.config.get(
+                    f"ckanext.fairdatapoint.{config_name}", default_value
+                )
+            )
+        return harvester_setting
