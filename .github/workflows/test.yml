@@ -64,4 +64,4 @@ jobs:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     - uses: actions/checkout@v4
     - name: REUSE Compliance Check
-      uses: fsfe/reuse-action@v4
+      uses: fsfe/reuse-action@v5
