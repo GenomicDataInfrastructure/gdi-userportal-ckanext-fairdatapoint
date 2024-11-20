@@ -27,20 +27,86 @@ PACKAGE_REPLACE_FIELDS = [
 RESOLVE_LANGUAGES = ("en", "nl")
 
 
+def resolve_labels(package_dict: dict) -> int:
+    """Resolves labels and updates the database
+
+    Parameters
+    ----------
+    package_dict : dict
+        Package dictionary from harvester
+
+    Returns
+    -------
+    int
+        Number of successfully resolved labels, -1 if none needed to be resolved
+
+    """
+    log.debug("Label resolving is requested")
+    translation_list = []
+
+    total_terms = terms_in_package_dict(package_dict)
+    unresolved_terms = get_list_unresolved_terms(total_terms)
+
+    if unresolved_terms:
+        log.debug("There are %d unresolved terms", len(unresolved_terms))
+
+        resolver = resolvable_label_resolver()
+
+        for term in unresolved_terms:
+            extra_translations = resolver.load_and_translate_uri(term)
+            translation_list.extend(extra_translations)
+
+        # Check if there is actually translations in the list
+        if translation_list:
+            log.debug("Resolved %d labels", len(translation_list))
+
+            # term_translation_update is a privileged function
+            # Thank god CKAN is like Hollywood OS and we can just override
+            updated_labels = toolkit.get_action("term_translation_update_many")(
+                {"ignore_auth": True, "defer_commit": True},
+                {"data": translation_list},
+            )
+
+            if "success" not in updated_labels:
+                log.warning("Error updating labels: %s", updated_labels)
+
+            elif not (len(translation_list) == int(updated_labels["success"])):
+                log.warning(
+                    "Of %d labels, only %d updated successfully",
+                    len(translation_list),
+                    updated_labels["success"],
+                )
+            else:
+                log.debug("Updated %s labels in database", updated_labels["success"])
+                return len(translation_list)
+        else:
+            log.debug("No labels succesfully resolved")
+            return 0
+    else:
+        log.debug("There are no unresolved terms!")
+        return -1
+
+
 def get_list_unresolved_terms(
-    terms: list[str], languages=RESOLVE_LANGUAGES
+    terms: list[str], languages: list[str] = RESOLVE_LANGUAGES
 ) -> list[str]:
-    """This function gets a list of terms not known by CKAN, based on an input list
+    """This function gets a list of terms not fully known by CKAN, based on an input list
+
+    If a label is present in one language but missing in another, it is considered resolved:
+    reason being that the language most likely does not exist for a given label, if one was
+    resolved successfully before.
 
     Parameters
     ----------
     terms : list[str]
         List of labels that harvested, that need to be checked if they are resolved
+    languages : list[str], optional
+        List of language codes that need to be resolved, default is 'en' and 'nl'.
 
     Returns
     -------
     list[str]
-        List containing the labels that are resolved
+        List containing the labels that are not resolved yet
     """
     term_set = set(terms)
 
@@ -109,66 +175,6 @@ def terms_in_package_dict(package_dict: dict) -> list[str]:
     # Now filter if URI and only return URIs
     valid_term_list = [term for term in term_list if _is_absolute_uri(term)]
     return valid_term_list
-
-
-def resolve_labels(package_dict: dict) -> int:
-    """Resolves labels and updates the database
-
-    Parameters
-    ----------
-    package_dict : dict
-        Package dictionary from harvester
-
-    Returns
-    -------
-    int
-        Number of successfully resolved labels, -1 if none needed to be resolved
-
-    """
-    log.debug("Label resolving is requested")
-    translation_list = []
-
-    total_terms = terms_in_package_dict(package_dict)
-    unresolved_terms = get_list_unresolved_terms(total_terms)
-
-    if unresolved_terms:
-        log.debug("There are %d unresolved terms", len(unresolved_terms))
-
-        resolver = resolvable_label_resolver()
-
-        for term in unresolved_terms:
-            extra_translations = resolver.load_and_translate_uri(term)
-            translation_list.extend(extra_translations)
-
-        # Check if there is actually translations in the list
-        if translation_list:
-            log.debug("Resolved %d labels", len(translation_list))
-
-            # term_translation_update is a privileged function
-            # Thank god CKAN is like Hollywood OS and we can just override
-            updated_labels = toolkit.get_action("term_translation_update_many")(
-                {"ignore_auth": True, "defer_commit": True},
-                {"data": translation_list},
-            )
-
-            if "success" not in updated_labels:
-                log.warning("Error updating labels: %s", updated_labels)
-
-            elif not (len(translation_list) == int(updated_labels["success"])):
-                log.warning(
-                    "Of %d labels, only %d updated successfully",
-                    len(translation_list),
-                    updated_labels["success"],
-                )
-            else:
-                log.debug("Updated %s labels in database", updated_labels["success"])
-                return len(translation_list)
-        else:
-            log.debug("No labels succesfully resolved")
-            return 0
-    else:
-        log.debug("There are no unresolved terms!")
-        return -1
 
 
 def _is_absolute_uri(uri: str) -> bool:
