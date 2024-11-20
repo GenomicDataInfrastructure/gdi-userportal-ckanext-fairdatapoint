@@ -17,7 +17,7 @@ from dateutil.parser import ParserError
 from rdflib import DCAT, DCTERMS, FOAF, Namespace, URIRef
 
 from ckanext.dcat.profiles import EuropeanDCATAP3Profile
-from ckanext.fairdatapoint.resolver import PACKAGE_REPLACE_FIELDS
+from ckanext.fairdatapoint.labels import PACKAGE_REPLACE_FIELDS
 
 log = logging.getLogger(__name__)
 
