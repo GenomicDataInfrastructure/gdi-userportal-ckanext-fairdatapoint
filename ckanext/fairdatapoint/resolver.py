@@ -148,7 +148,7 @@ class resolvable_label_resolver:
                     {
                         "term": str(subject_uri),
                         "term_translation": label,
-                        "lang_code": DEFAULT_LABEL_LANG,  # FIXME hardcoded default language
+                        "lang_code": DEFAULT_LABEL_LANG,
                     }
                 )
 

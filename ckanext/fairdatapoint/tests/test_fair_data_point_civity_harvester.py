@@ -20,7 +20,9 @@ class TestFairDataPointCivityHarvester(unittest.TestCase):
     def test_get_harvest_catalog_setting_from_dict(self):
         harvester = FairDataPointCivityHarvester()
         harvest_config_dict = {fair_data_point_civity_harvester.HARVEST_CATALOG: "true"}
-        result = harvester._get_harvest_catalog_setting(harvest_config_dict)
+        result = harvester._get_harvester_setting(
+            harvest_config_dict, fair_data_point_civity_harvester.HARVEST_CATALOG, False
+        )
         self.assertTrue(result)
 
     @patch("ckan.plugins.toolkit.config")
@@ -29,7 +31,9 @@ class TestFairDataPointCivityHarvester(unittest.TestCase):
         harvester = FairDataPointCivityHarvester()
 
         harvest_config_dict = {}
-        result = harvester._get_harvest_catalog_setting(harvest_config_dict)
+        result = harvester._get_harvester_setting(
+            harvest_config_dict, fair_data_point_civity_harvester.HARVEST_CATALOG, False
+        )
 
         self.assertFalse(result)
         mock_config.get.assert_called_once_with(
@@ -41,15 +45,18 @@ class TestFairDataPointCivityHarvester(unittest.TestCase):
         "ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider.FairDataPointRecordProvider"
         ".__init__"
     )
-    def test_setup_record_provider(self, mock_record_provider):
+    @patch(
+        "ckanext.fairdatapoint.harvesters.fair_data_point_civity_harvester.get_harvester_setting"
+    )
+    def test_setup_record_provider(self, get_harvester_setting, mock_record_provider):
         mock_record_provider.return_value = None
         harvester = FairDataPointCivityHarvester()
-        harvester._get_harvest_catalog_setting = MagicMock(return_value=True)
+        get_harvester_setting.return_value = True
         harvest_url = "http://example.com"
         harvest_config_dict = {fair_data_point_civity_harvester.HARVEST_CATALOG: "true"}
         harvester.setup_record_provider(harvest_url, harvest_config_dict)
-        harvester._get_harvest_catalog_setting.assert_called_once_with(
-            harvest_config_dict
+        get_harvester_setting.assert_called_once_with(
+            harvest_config_dict, fair_data_point_civity_harvester.HARVEST_CATALOG, False
         )
         mock_record_provider.assert_called_once_with(harvest_url, True)
 
