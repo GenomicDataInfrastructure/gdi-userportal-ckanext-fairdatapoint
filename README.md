@@ -114,14 +114,14 @@ otherwise run:
 
 ```commandline
 pip install -e 'git+https://github.com/ckan/ckanext-scheming.git@release-3.0.0#egg=ckanext-scheming[requirements]'
-pip install -e 'git+https://github.com/ckan/ckanext-harvest.git@v1.5.6#egg=ckanext-harvest[requirements]'
-pip install -e 'git+https://github.com/ckan/ckanext-dcat.git@v2.0.0#egg=ckanext-dcat'
-pip install -r https://raw.githubusercontent.com/ckan/ckanext-dcat/v2.0.0/requirements.txt
+pip install -e 'git+https://github.com/ckan/ckanext-harvest.git@v1.6.0#egg=ckanext-harvest[requirements]'
+pip install -e 'git+https://github.com/ckan/ckanext-dcat.git@v2.1.0#egg=ckanext-dcat'
+pip install -r https://raw.githubusercontent.com/ckan/ckanext-dcat/v2.1.0/requirements.txt
 ```
 
 ## Tests
 
-To run the tests go to [GDI harvester test information](https://genomicdatainfrastructure.github.io/gdi-userportal-docs/docs/ckan/extension-local-setup-and-testing/)
+To run the tests go to [GDI harvester test information](https://genomicdatainfrastructure.github.io/gdi-userportal-docs/developer-guide/ckan/extension-local-setup-and-testing/)
 
 ## Releasing a new version of ckanext-fairdatapoint
 

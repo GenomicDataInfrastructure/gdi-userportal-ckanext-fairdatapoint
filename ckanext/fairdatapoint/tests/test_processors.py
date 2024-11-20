@@ -53,17 +53,10 @@ class TestProcessors:
                                 license_id="", identifier="27866022694497978",
                                 has_version=[
                                     "https://repo.metadatacenter.org/template-instances/2836bf1c-76e9-44e7-a65e-80e9ca63025a"],
-                                contact=[
-                                    {
-                                        "name": "N.K. De Vries"
-                                    }
-                                ], creator=[{"identifier": "https://orcid.org/0000-0002-0180-3636",
-                                             "name": "https://orcid.org/0000-0002-0180-3636"}],
-                                publisher=[
-                                    {
-                                        "uri": "https://opal.health-ri.nl/pub/"
-                                    }
-                                ], temporal_start='2020-01-01', temporal_end='2025-12-31')
+                                contact=[{'email': '', 'identifier': 'https://orcid.org/0000-0002-4348-707X', 'name': 'N.K. De Vries','uri': ''}
+                                ], creator=[{'email': '', 'identifier': '', 'name': '', 'type': '', 'uri': 'https://orcid.org/0000-0002-0180-3636', 'url': ''}],
+                                publisher=[{'email': '','identifier': '','name': '','type': '','uri': 'https://opal.health-ri.nl/pub', 'url': ''}],
+                                temporal_start='2020-01-01', temporal_end='2025-12-31')
         assert actual_dataset == expected_dataset
 
     def test_fdp_record_converter_catalog_dict(self):
@@ -85,11 +78,17 @@ class TestProcessors:
             "language": ["http://id.loc.gov/vocabulary/iso639-1/en"],
             "license_id": "",
             "modified": '2023-10-06T10:12:55.614000+00:00',
-            "publisher": [
+            'publisher': [
                 {
-                    "name": "Automatic"
-                }
+                    'email': '',
+                    'identifier': '',
+                    "name": "Automatic",
+                    'type': '',
+                    'uri': '',
+                    'url': '',
+                },
             ],
+
             "resources": [],
             "tags": [],
             "title": "Slovenia National Node"
