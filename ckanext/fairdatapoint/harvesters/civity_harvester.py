@@ -23,7 +23,6 @@ ID = "id"
 
 log = logging.getLogger(__name__)
 
-# TODO move this to be a harvester setting
 RESOLVE_LABELS = "resolve_labels"
 RESOLVE_LABELS_SETTING = "ckanext.fairdatapoint.resolve_labels"
 
