@@ -3,8 +3,8 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-SEPARATOR = ';'
-KEY_VALUE_SEPARATOR = '='
+SEPARATOR = ";"
+KEY_VALUE_SEPARATOR = "="
 
 
 class IdentifierException(Exception):
@@ -38,15 +38,15 @@ class Identifier:
                 result = key_value[index]
             else:
                 raise IdentifierException(
-                    'Unexpected number of parts in key_value [{}]: [{}]',
+                    "Unexpected number of parts in key_value [{}]: [{}]",
                     key_values[1],
-                    len(key_value)
+                    len(key_value),
                 )
         else:
             raise IdentifierException(
-                'Unexpected number of parts in record identifier [{}]: [{}]',
+                "Unexpected number of parts in record identifier [{}]: [{}]",
                 self.guid,
-                len(key_values)
+                len(key_values),
             )
 
         return result
