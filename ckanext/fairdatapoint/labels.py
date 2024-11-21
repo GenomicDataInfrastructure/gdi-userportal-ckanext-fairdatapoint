@@ -69,13 +69,13 @@ def resolve_labels(package_dict: dict) -> int:
 
             if "success" not in updated_labels:
                 log.warning("Error updating labels: %s", updated_labels)
-
-            elif not (len(translation_list) == int(updated_labels["success"])):
-                log.warning(
-                    "Of %d labels, only %d updated successfully",
-                    len(translation_list),
-                    updated_labels["success"],
-                )
+            if updated_labels["success"].isinteger():
+                if not (len(translation_list) == int(updated_labels["success"])):
+                    log.warning(
+                        "Of %d labels, only %s updated successfully",
+                        len(translation_list),
+                        updated_labels["success"],
+                    )
             else:
                 log.debug("Updated %s labels in database", updated_labels["success"])
                 return len(translation_list)
