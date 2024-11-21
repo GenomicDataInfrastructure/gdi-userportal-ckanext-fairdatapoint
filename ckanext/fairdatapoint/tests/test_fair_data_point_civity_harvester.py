@@ -5,6 +5,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from ckanext.fairdatapoint.harvesters.config import get_harvester_setting
 import ckanext.fairdatapoint.plugin as plugin
 from ckanext.fairdatapoint.harvesters import (
     FairDataPointCivityHarvester,
@@ -18,9 +19,8 @@ class TestFairDataPointCivityHarvester(unittest.TestCase):
         plugin.toolkit = MagicMock()
 
     def test_get_harvest_catalog_setting_from_dict(self):
-        harvester = FairDataPointCivityHarvester()
         harvest_config_dict = {fair_data_point_civity_harvester.HARVEST_CATALOG: "true"}
-        result = harvester._get_harvester_setting(
+        result = get_harvester_setting(
             harvest_config_dict, fair_data_point_civity_harvester.HARVEST_CATALOG, False
         )
         self.assertTrue(result)
@@ -28,10 +28,8 @@ class TestFairDataPointCivityHarvester(unittest.TestCase):
     @patch("ckan.plugins.toolkit.config")
     def test_get_harvest_catalog_setting_from_global_config(self, mock_config):
         mock_config.get.return_value = "false"
-        harvester = FairDataPointCivityHarvester()
-
         harvest_config_dict = {}
-        result = harvester._get_harvester_setting(
+        result = get_harvester_setting(
             harvest_config_dict, fair_data_point_civity_harvester.HARVEST_CATALOG, False
         )
 
