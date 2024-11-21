@@ -14,18 +14,19 @@ from abc import abstractmethod
 import ckan.plugins.toolkit as toolkit
 from ckan import model
 
+from ckanext.fairdatapoint.harvesters.config import get_harvester_setting
 from ckanext.fairdatapoint.labels import resolve_labels
 from ckanext.harvest.harvesters import HarvesterBase
 from ckanext.harvest.model import HarvestObject
 from ckanext.harvest.model import HarvestObjectExtra as HOExtra
+
+
 
 ID = "id"
 
 log = logging.getLogger(__name__)
 
 RESOLVE_LABELS = "resolve_labels"
-RESOLVE_LABELS_SETTING = "ckanext.fairdatapoint.resolve_labels"
-
 
 def text_traceback():
     with warnings.catch_warnings():
@@ -405,7 +406,8 @@ class CivityHarvester(HarvesterBase):
             ):
                 return False
             # Also update labels in case of success
-            if self._get_harvester_setting(harvest_config_dict=harvest_object.config):
+            if get_harvester_setting(harvest_config_dict=harvest_object.source.config, config_name=RESOLVE_LABELS,
+                                     default_value=True):
                 resolve_labels(package_dict)
         else:
             return False
@@ -629,15 +631,3 @@ class CivityHarvester(HarvesterBase):
             name = package.name
 
         return name
-
-    @staticmethod
-    def _get_harvester_setting(harvest_config_dict, config_name, default_value):
-        if config_name in harvest_config_dict:
-            harvester_setting = toolkit.asbool(harvest_config_dict[config_name])
-        else:
-            harvester_setting = toolkit.asbool(
-                toolkit.config.get(
-                    f"ckanext.fairdatapoint.{config_name}", default_value
-                )
-            )
-        return harvester_setting
