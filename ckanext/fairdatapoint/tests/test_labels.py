@@ -121,7 +121,7 @@ def test_resolve_label_happy_flow(
     ]
 
     load_and_translate_uri.return_value = translation_list
-    get_action.return_value.return_value = {"success": "3"}
+    get_action.return_value.return_value = {"success": "3 updated succesfully"}
 
     assert resolve_labels({"theme": "http://www.wikidata.org/entity/Q29937289"}) == 3
 
