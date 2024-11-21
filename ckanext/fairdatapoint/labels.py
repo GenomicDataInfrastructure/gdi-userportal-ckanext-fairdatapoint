@@ -69,7 +69,7 @@ def resolve_labels(package_dict: dict) -> int:
 
             if "success" not in updated_labels:
                 log.warning("Error updating labels: %s", updated_labels)
-            if updated_labels["success"].isinteger():
+            if updated_labels["success"].IsNumeric():
                 if not (len(translation_list) == int(updated_labels["success"])):
                     log.warning(
                         "Of %d labels, only %s updated successfully",
