@@ -15,8 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+## [v1.4.1] - 2024-11-21
 
-## [v1.2.2] - 2024-06-28
+### Fixed
+* Fix: Resolve labels during harvesting by @Markus92 in
+
+## [v1.4.0] - 2024-11-21
 
 ### What's Changed
 * Dcat 2.1.0 by @hcvdwerf in https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/pull/85
