@@ -14,7 +14,8 @@ jobs:
       # The CKAN version tag of the Solr and Postgres containers should match
       # the one of the container the tests run on.
       # You can switch this base image with a custom image tailored to your project
-      image: openknowledge/ckan-dev:2.10
+      image: ckan/ckan-dev:2.11-py3.10
+      options: --user root
     services:
       solr:
         image: ckan/ckan-solr:2.11-solr9
@@ -42,15 +43,16 @@ jobs:
         pip install -r requirements.txt
         pip install -r dev-requirements.txt
         pip install --upgrade pytest-rerunfailures
-        pip install -e 'git+https://github.com/CivityNL/ckanext-scheming.git@release-3.0.0-civity#egg=ckanext-scheming[requirements]'
+        pip install -e 'git+https://github.com/CivityNL/ckanext-scheming.git@release-3.0.0-civity-1#egg=ckanext-scheming[requirements]'
         pip install -e 'git+https://github.com/ckan/ckanext-harvest.git@v1.6.0#egg=ckanext-harvest[requirements]'
-        pip install -e 'git+https://github.com/ckan/ckanext-dcat.git@v2.1.0#egg=ckanext-dcat[requirements]'
-        pip install -r https://raw.githubusercontent.com/ckan/ckanext-dcat/v2.1.0/requirements.txt
+        pip install -e 'git+https://github.com/ckan/ckanext-dcat.git@v2.2.0#egg=ckanext-dcat[requirements]'
+        pip install -r https://raw.githubusercontent.com/ckan/ckanext-dcat/v2.2.0/requirements.txt
         python3 setup.py develop
     - name: Setup extension
       run: |
         sed -i -e 's/use = config:.*/use = config:\/srv\/app\/src\/ckan\/test-core.ini/' test.ini
         ckan -c test.ini db init
+        ckan -c test.ini db pending-migrations --apply
     - name: Run tests
       run: |
         pytest --ckan-ini=test.ini --cov=ckanext.fairdatapoint --disable-warnings ckanext/fairdatapoint 
