@@ -30,41 +30,17 @@ class FairDataPointRecordProvider:
         self.harvest_catalogs = harvest_catalogs
 
     def get_record_ids(self) -> Dict.keys:
-        """
-        Returns all the FDP records which should end up as packages in CKAN to populate the "guids_in_harvest" list
-        https://rdflib.readthedocs.io/en/stable/intro_to_parsing.html
-        """
-        log.debug(
-            "FAIR Data Point get_records from {}".format(
-                self.fair_data_point.fdp_end_point
-            )
-        )
-
+        log.debug("FAIR Data Point get_records from {}".format(self.fair_data_point.fdp_end_point))
         result = dict()
-        queue = deque([self.fair_data_point.fdp_end_point])
-        visited = set()
-
-        while queue:
-            url = queue.popleft()
-            if url in visited:
-                continue
-            visited.add(url)
-
-            convert_graph_to_fdp_record = GraphToFdpRecordMapper(url)
-            graph = self.fair_data_point.get_graph(url)
-            fdp_record = convert_graph_to_fdp_record.map(graph)
-
-            if fdp_record:
-                queue.extend(fdp_record.children())
-                if self.harvest_catalogs and fdp_record.is_catalog():
-                    identifier = Identifier("")
-                    identifier.add("catalog", str(fdp_record.url))
-                    result[identifier.guid] = fdp_record.url
-                elif fdp_record.is_dataset():
-                    identifier = Identifier("")
-                    identifier.add("dataset", str(fdp_record.url))
-                    result[identifier.guid] = fdp_record.url
-
+        for fdp_record in self._bfs_traverse_records(self.fair_data_point.fdp_end_point):
+            if self.harvest_catalogs and fdp_record.is_catalog():
+                identifier = Identifier("")
+                identifier.add("catalog", str(fdp_record.url))
+                result[identifier.guid] = fdp_record.url
+            elif fdp_record.is_dataset():
+                identifier = Identifier("")
+                identifier.add("dataset", str(fdp_record.url))
+                result[identifier.guid] = fdp_record.url
         return result.keys()
 
     def get_record_by_id(self, guid: str) -> str:
@@ -150,6 +126,24 @@ class FairDataPointRecordProvider:
 
         for value in graph.objects(subject=subject_uri, predicate=predicate_uri):
             yield value
+
+    def _map_record(self, url: str):
+        mapper = GraphToFdpRecordMapper(url)
+        graph = self.fair_data_point.get_graph(url)
+        return mapper.map(graph)
+
+    def _bfs_traverse_records(self, start_url: str):
+        queue = deque([start_url])
+        visited = set()
+        while queue:
+            url = queue.popleft()
+            if url in visited:
+                continue
+            visited.add(url)
+            record = self._map_record(url)
+            if record:
+                yield record
+                queue.extend(record.children())
 
     @staticmethod
     def _remove_fdp_defaults(g, subject_uri):
