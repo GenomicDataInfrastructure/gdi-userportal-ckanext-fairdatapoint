@@ -32,7 +32,7 @@ class FairDataPointRecordProvider:
     def get_record_ids(self) -> Dict.keys:
         log.debug("FAIR Data Point get_records from {}".format(self.fair_data_point.fdp_end_point))
         result = dict()
-        for fdp_record in self._bfs_traverse_records(self.fair_data_point.fdp_end_point):
+        for fdp_record in self._breath_first_search_records(self.fair_data_point.fdp_end_point):
             if self.harvest_catalogs and fdp_record.is_catalog():
                 identifier = Identifier("")
                 identifier.add("catalog", str(fdp_record.url))
@@ -132,7 +132,7 @@ class FairDataPointRecordProvider:
         graph = self.fair_data_point.get_graph(url)
         return mapper.map(graph)
 
-    def _bfs_traverse_records(self, start_url: str):
+    def _breath_first_search_records(self, start_url: str):
         queue = deque([start_url])
         visited = set()
         while queue:

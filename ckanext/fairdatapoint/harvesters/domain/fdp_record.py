@@ -8,9 +8,9 @@ from rdflib import DCAT, RDF, URIRef
 
 class FdpRecord:
     def __init__(self, url, graph):
-        self.graph = graph
         self.url = url
         self._children = set()
+        self._graph = graph
 
     def children(self):
         return self._children
@@ -19,7 +19,7 @@ class FdpRecord:
         self._children.add(child_url)
 
     def is_catalog(self):
-        return (URIRef(self.url), RDF.type, DCAT.Catalog) in self.graph
+        return (URIRef(self.url), RDF.type, DCAT.Catalog) in self._graph
 
     def is_dataset(self):
-        return (URIRef(self.url), RDF.type, DCAT.Dataset) in self.graph
+        return (URIRef(self.url), RDF.type, DCAT.Dataset) in self._graph
