@@ -6,6 +6,7 @@
 
 import logging
 from typing import Dict, Iterable, Union
+from collections import deque
 
 import requests
 from rdflib import DCAT, DCTERMS, RDF, BNode, Graph, Literal, Namespace, URIRef
@@ -13,6 +14,7 @@ from rdflib.term import Node
 from requests import HTTPError, JSONDecodeError
 
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point import FairDataPoint
+from ckanext.fairdatapoint.harvesters.domain.graph_to_fdp_record_mapper import GraphToFdpRecordMapper
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 
 LDP = Namespace("http://www.w3.org/ns/ldp#")
@@ -28,51 +30,18 @@ class FairDataPointRecordProvider:
         self.harvest_catalogs = harvest_catalogs
 
     def get_record_ids(self) -> Dict.keys:
-        """
-        Returns all the FDP records which should end up as packages in CKAN to populate the "guids_in_harvest" list
-        https://rdflib.readthedocs.io/en/stable/intro_to_parsing.html
-        """
-        log.debug(
-            "FAIR Data Point get_records from {}".format(
-                self.fair_data_point.fdp_end_point
-            )
-        )
-
+        log.debug("FAIR Data Point get_records from {}".format(self.fair_data_point.fdp_end_point))
         result = dict()
-
-        fdp_graph = self.fair_data_point.get_graph(self.fair_data_point.fdp_end_point)
-
-        contains_predicate = LDP.contains
-        for contains_object in fdp_graph.objects(predicate=contains_predicate):
-            result.update(self._process_catalog(str(contains_object)))
-
-        return result.keys()
-
-    def _process_catalog(self, path: Union[str, URIRef]) -> Dict:
-        result = dict()
-
-        catalogs_graph = self.fair_data_point.get_graph(path)
-
-        for catalog_subject in catalogs_graph.subjects(RDF.type, DCAT.Catalog):
-            identifier = Identifier("")
-
-            identifier.add("catalog", str(catalog_subject))
-
-            if self.harvest_catalogs:
-                result[identifier.guid] = catalog_subject
-
-            catalog_graph = self.fair_data_point.get_graph(catalog_subject)
-
-            for dataset_subject in catalog_graph.objects(predicate=DCAT.dataset):
+        for fdp_record in self._breath_first_search_records(self.fair_data_point.fdp_end_point):
+            if self.harvest_catalogs and fdp_record.is_catalog():
                 identifier = Identifier("")
-
-                identifier.add("catalog", str(catalog_subject))
-
-                identifier.add("dataset", str(dataset_subject))
-
-                result[identifier.guid] = dataset_subject
-
-        return result
+                identifier.add("catalog", str(fdp_record.url))
+                result[identifier.guid] = fdp_record.url
+            elif fdp_record.is_dataset():
+                identifier = Identifier("")
+                identifier.add("dataset", str(fdp_record.url))
+                result[identifier.guid] = fdp_record.url
+        return result.keys()
 
     def get_record_by_id(self, guid: str) -> str:
         """
@@ -157,6 +126,24 @@ class FairDataPointRecordProvider:
 
         for value in graph.objects(subject=subject_uri, predicate=predicate_uri):
             yield value
+
+    def _map_record(self, url: str):
+        mapper = GraphToFdpRecordMapper(url)
+        graph = self.fair_data_point.get_graph(url)
+        return mapper.map(graph)
+
+    def _breath_first_search_records(self, start_url: str):
+        queue = deque([start_url])
+        visited = set()
+        while queue:
+            url = queue.popleft()
+            if url in visited:
+                continue
+            visited.add(url)
+            record = self._map_record(url)
+            if record:
+                yield record
+                queue.extend(record.children())
 
     @staticmethod
     def _remove_fdp_defaults(g, subject_uri):
