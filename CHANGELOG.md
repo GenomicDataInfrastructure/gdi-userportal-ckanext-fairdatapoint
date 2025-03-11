@@ -15,12 +15,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-## [v1.4.1] - 2024-11-21
+## [v1.3.4] - 2025-03-11
 
-### Fixed
-* Fix: Resolve labels during harvesting by @Markus92 in
+### What's Changed
+* Restructure FDP processing to use LDP hierarchy by @hcvdwerf
 
-## [v1.4.0] - 2024-11-21
+## [v1.3.3] - 2025-02-11
+
+### What's Changed
+*feat: integrate Health DCAT file on top of DCAT-AP 3 profile by @hcvdwerf
+
+## [v1.3.2] - 2024-11-21
 
 ### What's Changed
 * Dcat 2.1.0 by @hcvdwerf in https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/pull/85
@@ -30,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * chore(deps): update dependency rdflib to ~=7.1.0 by @LNDS-Sysadmins in https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/pull/82
 * chore(deps): update fsfe/reuse-action action to v5 by @LNDS-Sysadmins in https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/pull/84
 
+### Fixed
+* Fix: Resolve labels during harvesting by @Markus92 
 
 ## [v1.2.2] - 2024-06-28
 
