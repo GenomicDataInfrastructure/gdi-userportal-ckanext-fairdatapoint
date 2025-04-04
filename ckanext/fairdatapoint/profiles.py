@@ -16,7 +16,7 @@ from ckan.plugins import toolkit
 from dateutil.parser import ParserError
 from rdflib import DCAT, DCTERMS, FOAF, Namespace, URIRef
 
-from ckanext.dcat.profiles import EuropeanDCATAP3Profile
+from ckanext.dcat.profiles import EuropeanHealthDCATAPProfile
 from ckanext.fairdatapoint.labels import PACKAGE_REPLACE_FIELDS
 
 log = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def validate_tags(values_list: List[Dict]) -> List:
     return tags
 
 
-class FAIRDataPointDCATAPProfile(EuropeanDCATAP3Profile):
+class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
     """
     An RDF profile for FAIR data points
     """
