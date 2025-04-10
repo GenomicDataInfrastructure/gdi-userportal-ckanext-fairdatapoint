@@ -12,6 +12,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.3.6] - 2025-04-10
+
+### Added
+- feat:(ART-14066) update release plan by @jadzlnds in 9261860
+- feat:(ART-14066) update release plan by @jadzlnds in 14ac072
+- feat:(ART-14066) update release plan by @jadzlnds in 37cbdcc
+
+
+### Changed
+- Update ckanext/fairdatapoint/harvesters/domain/identifier.py by @Hans-Christian in 2b02ace
+
+
+### Fixed
+- fix UT by @Hans-Chrstian in 2739d1e
+- fix(identifier): correctly parse values containing '=' in Identifier by @Hans-Chrstian in 11d9354
+
+
 ## [v1.3.5] - 2025-04-04
 
 ### Changed
