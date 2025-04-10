@@ -33,7 +33,7 @@ class TestIdentifier:
         assert actual == expected
 
     def test_get_part_no_separator(self):
-        with pytest.raises(IndexError):
+        with pytest.raises(IdentifierException):
             identifier = Identifier("some_id_no_separator")
             part = identifier.get_part(index=0)
 
