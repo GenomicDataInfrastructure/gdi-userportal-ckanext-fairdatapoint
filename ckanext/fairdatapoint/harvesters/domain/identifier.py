@@ -30,9 +30,9 @@ class Identifier:
     def get_part(self, index: int) -> str:
         key_values = self.guid.split(SEPARATOR)
 
-        if not key_values:
+        if not self.guid.strip() or key_values == ['']:
             raise IdentifierException(
-                f"Unexpected number of parts in record identifier [{self.guid}]: [{len(key_values)}]"
+                f"Empty or improperly formatted record identifier: [{self.guid}]"
             )
 
         key_value = key_values[-1].split(KEY_VALUE_SEPARATOR, 1)
