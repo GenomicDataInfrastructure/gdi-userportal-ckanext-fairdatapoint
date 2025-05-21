@@ -329,27 +329,27 @@ class CivityHarvester(HarvesterBase):
             "Generating package name from title [{}]".format(package_dict["title"])
         )
         try:
-            if status == "new":
-                if "name" not in package_dict:
-                    try:
-                        package_dict["name"] = self._gen_name_from_guid(harvest_object.guid)
-                        logger.info(
-                            "Generated package name from title [{}]: [{}]".format(
-                                package_dict.get("title", "UNKNOWN TITLE"),
-                                package_dict["name"]
-                            )
+            if status == "new" and "name" not in package_dict:
+                try:
+                    package_dict["name"] = self._gen_name_from_guid(harvest_object.guid)
+                    logger.info(
+                        "Generated package name from title [{}]: [{}]".format(
+                            package_dict.get("title", "UNKNOWN TITLE"),
+                            package_dict["name"]
                         )
-                    except TypeError:
-                        logger.error(
-                            "TypeError: error generating package name. Package title is not a string: [%s]",
-                            str(package_dict.get("title"))
-                        )
-                        self._save_object_error(
-                            "TypeError: error generating package name. Package title [%s] is not a string." %
-                            str(package_dict.get("title")),
-                            harvest_object,
-                        )
-                        return False
+                    )
+                except TypeError:
+                    logger.error(
+                        "TypeError: error generating package name. Package title is not a string: [%s]",
+                        str(package_dict.get("title"))
+                    )
+                    self._save_object_error(
+                        "TypeError: error generating package name. Package title [%s] is not a string." %
+                        str(package_dict.get("title")),
+                        harvest_object,
+                    )
+                    return False
+
         except Exception as e:
             logger.exception("Unexpected error during name generation for package")
             self._save_object_error(str(e), harvest_object)
