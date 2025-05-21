@@ -118,7 +118,7 @@ class CivityHarvester(HarvesterBase):
                     obj.save()
                     result.append(obj.id)
                 else:
-                    log.info(
+                    logger.info(
                         "Duplicate HarvestObject for guid [%s] and source [%s] already exists. Skipping.",
                         guid, harvest_job.source.id
                     )
@@ -436,12 +436,6 @@ class CivityHarvester(HarvesterBase):
         model.Session.commit()
 
         logger.debug("Finished import stage for harvest_object [%s]", harvest_object.id)
-        return True
-
-        model.Session.commit()
-
-        logger.debug("Finished import stage for harvest_object [%s]", harvest_object.id)
-
         return True
 
     def _create_or_update_package(
