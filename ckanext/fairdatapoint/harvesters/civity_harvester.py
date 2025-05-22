@@ -125,7 +125,7 @@ class CivityHarvester(HarvesterBase):
                 obj = HarvestObject(
                     guid=guid,
                     job=harvest_job,
-                    package_id=guids_to_package_ids[guid],  
+                    package_id=guids_to_package_ids[guid],
                     extras=[HOExtra(key="status", value="change")],
                 )
                 obj.save()
