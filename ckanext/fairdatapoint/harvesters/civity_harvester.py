@@ -106,9 +106,8 @@ class CivityHarvester(HarvesterBase):
             for guid in new:
                 existing = (
                     model.Session.query(HarvestObject)
-                    .filter_by(guid=guid, harvest_source_id=harvest_job.source.id)
-                    .first()
-                )
+                    .filter_by(guid=guid, harvest_source_id=harvest_job.source.id, harvest_job_id=harvest_job.id)
+                    .first())
                 if not existing:
                     obj = HarvestObject(
                         guid=guid,
@@ -331,7 +330,7 @@ class CivityHarvester(HarvesterBase):
         try:
             if status == "new" and "name" not in package_dict:
                 try:
-                    package_dict["name"] = self._gen_name_from_guid(harvest_object.guid)
+                    package_dict["name"] = self._gen_new_name(harvest_object.guid)
                     logger.info(
                         "Generated package name from title [{}]: [{}]".format(
                             package_dict.get("title", "UNKNOWN TITLE"),
@@ -357,7 +356,7 @@ class CivityHarvester(HarvesterBase):
 
         # Fallback: ensure name is always set
         if "name" not in package_dict:
-            package_dict["name"] = self._gen_name_from_guid(harvest_object.guid)
+            package_dict["name"] = self._gen_new_name(harvest_object.guid)
 
 
         # Unless already set by an extension, get the owner organization (if any)
@@ -620,18 +619,4 @@ class CivityHarvester(HarvesterBase):
             result = "template"
 
         return result
-    
-    def _gen_name_from_guid(self, guid):
-        """
-        Generate a CKAN-safe name from a GUID, with uniqueness ensured via HarvesterBase.
-        """
-        import re
-
-        # Step 1: Clean GUID into CKAN-safe string
-        guid = guid.lower().strip()
-        guid = guid.replace("_", "-").replace(" ", "-")
-        name_base = re.sub(r"[^a-z0-9-]+", "-", guid).strip("-")
-
-        # Step 2: Use base class method to ensure uniqueness in CKAN
-        return self._gen_new_name(name_base)
 
