@@ -182,8 +182,6 @@ class CivityHarvester(HarvesterBase):
             self._get_harvest_config(harvest_object.source.config),
         )
 
-        result = False
-
         # Check harvest object status
         status = self._get_object_extra(harvest_object, "status")
 
