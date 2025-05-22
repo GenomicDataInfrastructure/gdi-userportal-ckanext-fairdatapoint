@@ -44,6 +44,8 @@ def dummy_harvester():
     class DummyFDPHarvester(CivityHarvester):
         def setup_record_provider(self, harvest_url, harvest_config_dict):
             self.record_provider = MagicMock()
+            self.record_provider.get_record_by_id = MagicMock(return_value="<rdf>dummy content</rdf>")
+
 
         def setup_record_to_package_converter(self, harvest_url, harvest_config_dict):
             pass  # Not needed for gather stage
@@ -165,12 +167,9 @@ def test_fetch_stage_status_delete(dummy_harvester, harvest_object):
     assert result is True
 
 def test_fetch_stage_successful_fetch(dummy_harvester, harvest_object):
-    dummy_harvester.record_provider.get_record_by_id.return_value = "<rdf>data</rdf>"
-
     result = dummy_harvester.fetch_stage(harvest_object)
-
     assert result is True
-    assert harvest_object.content == "<rdf>data</rdf>"
+    assert harvest_object.content == "<rdf>dummy content</rdf>"
     harvest_object.save.assert_called_once()
 
 def test_fetch_stage_empty_record(dummy_harvester, harvest_object):
@@ -193,7 +192,6 @@ def test_fetch_stage_record_provider_exception(dummy_harvester, harvest_object):
     assert "Error getting the record" in dummy_harvester._save_object_error.call_args[0][0]
 
 def test_fetch_stage_save_exception(dummy_harvester, harvest_object):
-    dummy_harvester.record_provider.get_record_by_id.return_value = "<rdf>data</rdf>"
     harvest_object.save.side_effect = Exception("cannot save")
 
     result = dummy_harvester.fetch_stage(harvest_object)
