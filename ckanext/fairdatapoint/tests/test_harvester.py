@@ -65,22 +65,29 @@ def configurable_harvester():
     return _create
 
 @patch("ckanext.fairdatapoint.harvesters.civity_harvester.HOExtra")
+@patch("ckanext.fairdatapoint.harvesters.civity_harvester.HarvestObject")
 @patch("ckanext.fairdatapoint.harvesters.civity_harvester.model.Session.query")
-def test_gather_stage_creates_new_object(mock_query, mock_HOExtra, mock_harvest_object, dummy_harvester, mock_harvest_job):
+def test_gather_stage_creates_new_object(mock_query, mock_HO, mock_HOExtra, dummy_harvester, mock_harvest_job):
     dummy_harvester._get_guids_in_harvest = lambda job: {"new-guid"}
     dummy_harvester._get_guids_to_package_ids_from_database = lambda job: {}
 
     mock_query.return_value.filter_by.return_value.first.return_value = None
-    mock_HOExtra.return_value = "Extra(status=new)"
+
+    ho_extra_mock = MagicMock()
+    mock_HOExtra.return_value = ho_extra_mock
 
     mock_obj = MagicMock(id="obj-new-guid")
-    mock_harvest_object.return_value = mock_obj
+    mock_HO.return_value = mock_obj
 
     result = dummy_harvester.gather_stage(mock_harvest_job)
 
     assert result == ["obj-new-guid"]
     mock_HOExtra.assert_called_once_with(key="status", value="new")
-    mock_harvest_object.assert_called_once()
+    mock_HO.assert_called_once_with(
+        guid="new-guid",
+        job=mock_harvest_job,
+        extras=[ho_extra_mock],
+    )
 
 @patch("ckanext.fairdatapoint.harvesters.civity_harvester.HOExtra")
 @patch("ckanext.fairdatapoint.harvesters.civity_harvester.HarvestObject")
