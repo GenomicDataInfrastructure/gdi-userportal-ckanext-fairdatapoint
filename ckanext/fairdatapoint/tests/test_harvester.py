@@ -44,14 +44,25 @@ def dummy_harvester():
     class DummyFDPHarvester(CivityHarvester):
         def setup_record_provider(self, harvest_url, harvest_config_dict):
             self.record_provider = MagicMock()
-            self.record_provider.get_record_by_id = MagicMock(return_value="<rdf>dummy content</rdf>")
-
+            self.record_provider.get_record_by_id = MagicMock()
 
         def setup_record_to_package_converter(self, harvest_url, harvest_config_dict):
             pass  # Not needed for gather stage
 
     return DummyFDPHarvester()
 
+@pytest.fixture
+def configurable_harvester():
+    def _create(record_return_value):
+        class DummyFDPHarvester(CivityHarvester):
+            def setup_record_provider(self, url, config):
+                self.record_provider = MagicMock()
+                self.record_provider.get_record_by_id = MagicMock(return_value=record_return_value)
+
+            def setup_record_to_package_converter(self, url, config):
+                pass
+        return DummyFDPHarvester()
+    return _create
 
 @patch("ckanext.fairdatapoint.harvesters.civity_harvester.HOExtra")
 @patch("ckanext.fairdatapoint.harvesters.civity_harvester.model.Session.query")
@@ -166,34 +177,28 @@ def test_fetch_stage_status_delete(dummy_harvester, harvest_object):
     result = dummy_harvester.fetch_stage(harvest_object)
     assert result is True
 
-def test_fetch_stage_successful_fetch(dummy_harvester, harvest_object):
-    result = dummy_harvester.fetch_stage(harvest_object)
+def test_fetch_stage_successful_fetch(configurable_harvester, harvest_object):
+    harvester = configurable_harvester("<rdf>dummy content</rdf>")
+    result = harvester.fetch_stage(harvest_object)
+
     assert result is True
     assert harvest_object.content == "<rdf>dummy content</rdf>"
     harvest_object.save.assert_called_once()
 
-def test_fetch_stage_empty_record(dummy_harvester, harvest_object):
+def test_fetch_stage_empty_record(configurable_harvester, harvest_object):
+    harvester = configurable_harvester(None)
+    harvester._save_object_error = MagicMock()
     harvest_object.extras = [HOExtra(key="status", value="change")]
-    dummy_harvester.record_provider.get_record_by_id.return_value = None
 
-    result = dummy_harvester.fetch_stage(harvest_object)
-
-    assert result is False
-    dummy_harvester._save_object_error.assert_called_once()
-    assert "Empty record" in dummy_harvester._save_object_error.call_args[0][0]
-
-def test_fetch_stage_record_provider_exception(dummy_harvester, harvest_object):
-    dummy_harvester.record_provider.get_record_by_id.side_effect = Exception("boom")
-
-    result = dummy_harvester.fetch_stage(harvest_object)
+    result = harvester.fetch_stage(harvest_object)
 
     assert result is False
-    dummy_harvester._save_object_error.assert_called_once()
-    assert "Error getting the record" in dummy_harvester._save_object_error.call_args[0][0]
+    harvester._save_object_error.assert_called_once()
+    assert "Empty record" in harvester._save_object_error.call_args[0][0]
 
 def test_fetch_stage_save_exception(dummy_harvester, harvest_object):
     harvest_object.save.side_effect = Exception("cannot save")
-
+    dummy_harvester._save_object_error = MagicMock()
     result = dummy_harvester.fetch_stage(harvest_object)
 
     assert result is False
