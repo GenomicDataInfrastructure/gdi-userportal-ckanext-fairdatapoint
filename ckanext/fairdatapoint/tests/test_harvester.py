@@ -14,7 +14,7 @@ def mock_harvest_source():
     source = MagicMock()
     source.id = "civity-source-id"
     source.url = "http://dummy-url.com"
-    source.config = None
+    source.config = {}
     source.owner_org = "org-id"
     return source
 
@@ -47,9 +47,16 @@ def dummy_harvester():
             self.record_provider.get_record_by_id = MagicMock()
 
         def setup_record_to_package_converter(self, harvest_url, harvest_config_dict):
-            pass  # Not needed for gather stage
+            self.record_to_package_converter = MagicMock()
+        @staticmethod
+        def _get_user_name():
+            return "test-user"
 
-    return DummyFDPHarvester()
+    harvester = DummyFDPHarvester()
+    harvester._save_object_error = MagicMock()
+    harvester._create_or_update_package = MagicMock(return_value="pkg-123")
+    harvester._create_resources = MagicMock(return_value=True)
+    return harvester
 
 @pytest.fixture
 def configurable_harvester():
@@ -211,3 +218,72 @@ def test_fetch_stage_save_exception(dummy_harvester, harvest_object):
     assert result is False
     dummy_harvester._save_object_error.assert_called_once()
     assert "Error saving harvest object" in dummy_harvester._save_object_error.call_args[0][0]
+
+
+def test_import_stage_delete_status(dummy_harvester, harvest_object):
+    harvest_object.extras = [HOExtra(key="status", value="delete")]
+    harvest_object.package_id = "pkg-delete"
+
+    with patch("ckanext.fairdatapoint.harvesters.civity_harvester.toolkit.get_action") as get_action:
+        delete_action = MagicMock()
+        get_action.return_value = delete_action
+
+        result = dummy_harvester.import_stage(harvest_object)
+
+        assert result is True
+        delete_action.assert_called_once()
+
+
+def test_import_stage_empty_content(dummy_harvester, harvest_object):
+    harvest_object.content = None
+    result = dummy_harvester.import_stage(harvest_object)
+    assert result is False
+    dummy_harvester._save_object_error.assert_called_once()
+
+
+def test_import_stage_conversion_error(dummy_harvester, harvest_object):
+    dummy_harvester.setup_record_to_package_converter(harvest_object.source.url, {})
+    dummy_harvester.record_to_package_converter.record_to_package.side_effect = Exception("fail")
+
+    result = dummy_harvester.import_stage(harvest_object)
+    assert result is False
+    dummy_harvester._save_object_error.assert_called_once()
+
+
+def test_import_stage_success_new_package(dummy_harvester, harvest_object):
+    dummy_harvester.setup_record_to_package_converter(harvest_object.source.url, {})
+    dummy_harvester.record_to_package_converter.record_to_package.return_value = {
+        "title": "My Dataset",
+        "resources": []
+    }
+    harvest_object.content = "<rdf>dummy content</rdf>"
+
+    with patch("ckanext.fairdatapoint.harvesters.civity_harvester.model.Session") as mock_session:
+        result = dummy_harvester.import_stage(harvest_object)
+
+        assert result is True
+        dummy_harvester._create_or_update_package.assert_called_once()
+        dummy_harvester._create_resources.assert_called_once()
+        assert harvest_object.current is True
+        harvest_object.add.assert_called()
+        mock_session.commit.assert_called()
+
+
+def test_import_stage_success_update(dummy_harvester, harvest_object):
+    harvest_object.extras = [HOExtra(key="status", value="change")]
+    harvest_object.package_id = "existing-pkg"
+
+    dummy_harvester.setup_record_to_package_converter(harvest_object.source.url, {})
+    dummy_harvester.record_to_package_converter.record_to_package.return_value = {
+        "title": "My Updated Dataset",
+        "resources": []
+    }
+    harvest_object.content = "<rdf>dummy content</rdf>"
+
+    with patch("ckanext.fairdatapoint.harvesters.civity_harvester.model.Session") as mock_session:
+        result = dummy_harvester.import_stage(harvest_object)
+
+        assert result is True
+        dummy_harvester._create_or_update_package.assert_called_once()
+        dummy_harvester._create_resources.assert_called_once()
+        mock_session.commit.assert_called()
