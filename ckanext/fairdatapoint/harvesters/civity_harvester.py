@@ -328,7 +328,7 @@ class CivityHarvester(HarvesterBase):
         try:
             if status == "new" and "name" not in package_dict:
                 try:
-                    package_dict["name"] = self._gen_new_name(harvest_object.guid)
+                    package_dict["name"] = self._gen_new_name(package_dict["title"])
                     logger.info(
                         "Generated package name from title [{}]: [{}]".format(
                             package_dict.get("title", "UNKNOWN TITLE"),
@@ -354,7 +354,7 @@ class CivityHarvester(HarvesterBase):
 
         # Fallback: ensure name is always set
         if "name" not in package_dict:
-            package_dict["name"] = self._gen_new_name(harvest_object.guid)
+            package_dict["name"] = self._gen_new_name(package_dict["title"])
 
 
         # Unless already set by an extension, get the owner organization (if any)
