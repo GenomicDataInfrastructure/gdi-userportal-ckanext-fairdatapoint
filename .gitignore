@@ -45,10 +45,4 @@ coverage.xml
 
 # Sphinx documentation
 docs/_build/
-.idea/.gitignore
-.idea/aws.xml
-.idea/gdi-userportal-ckanext-fairdatapoint.iml
-.idea/misc.xml
-.idea/modules.xml
-.idea/vcs.xml
-.idea/inspectionProfiles/profiles_settings.xml
+.idea
