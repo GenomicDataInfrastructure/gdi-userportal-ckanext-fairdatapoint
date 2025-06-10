@@ -104,13 +104,23 @@ class CivityHarvester(HarvesterBase):
             change = guids_in_db & guids_in_harvest
 
             for guid in new:
-                obj = HarvestObject(
-                    guid=guid,
-                    job=harvest_job,
-                    extras=[HOExtra(key="status", value="new")],
-                )
-                obj.save()
-                result.append(obj.id)
+                existing = (
+                    model.Session.query(HarvestObject)
+                    .filter_by(guid=guid, harvest_source_id=harvest_job.source.id, harvest_job_id=harvest_job.id)
+                    .first())
+                if not existing:
+                    obj = HarvestObject(
+                        guid=guid,
+                        job=harvest_job,
+                        extras=[HOExtra(key="status", value="new")],
+                    )
+                    obj.save()
+                    result.append(obj.id)
+                else:
+                    logger.info(
+                        "Duplicate HarvestObject for guid [%s] and source [%s] already exists. Skipping.",
+                        guid, harvest_job.source.id
+                    )
             for guid in change:
                 obj = HarvestObject(
                     guid=guid,
@@ -171,8 +181,6 @@ class CivityHarvester(HarvesterBase):
             harvest_object.source.url,
             self._get_harvest_config(harvest_object.source.config),
         )
-
-        result = False
 
         # Check harvest object status
         status = self._get_object_extra(harvest_object, "status")
@@ -318,34 +326,36 @@ class CivityHarvester(HarvesterBase):
             "Generating package name from title [{}]".format(package_dict["title"])
         )
         try:
-            # Set name for new package to prevent name conflict, see ckanext-harvest issue #117
-            try:
-                package_dict["name"] = self._gen_new_name(package_dict["title"])
-            except TypeError:
-                logger.error(
-                    "TypeError: error generating package name. Package title {} is not a string".format(
-                        str(package_dict["title"])
+            if status == "new" and "name" not in package_dict:
+                try:
+                    package_dict["name"] = self._gen_new_name(package_dict["title"])
+                    logger.info(
+                        "Generated package name from title [{}]: [{}]".format(
+                            package_dict.get("title", "UNKNOWN TITLE"),
+                            package_dict["name"]
+                        )
                     )
-                )
-                self._save_object_error(
-                    "TypeError: error generating package name. Package title [%s] is not a string."
-                    % str(package_dict["title"]),
-                    harvest_object,
-                )
-                return False
+                except TypeError:
+                    logger.error(
+                        "TypeError: error generating package name. Package title is not a string: [%s]",
+                        str(package_dict.get("title"))
+                    )
+                    self._save_object_error(
+                        "TypeError: error generating package name. Package title [%s] is not a string." %
+                        str(package_dict.get("title")),
+                        harvest_object,
+                    )
+                    return False
 
-        except toolkit.ValidationError:
-            logger.info(
-                "ValidationError: name already exists. Generating new package name from existing name {}".format(
-                    package_dict["name"]
-                )
-            )
-            package_dict["name"] = self._gen_new_name(package_dict["name"])
-        logger.info(
-            "Generated package name from title [{}]: [{}]".format(
-                package_dict["title"], package_dict["name"]
-            )
-        )
+        except Exception as e:
+            logger.exception("Unexpected error during name generation for package")
+            self._save_object_error(str(e), harvest_object)
+            return False
+
+        # Fallback: ensure name is always set
+        if "name" not in package_dict:
+            package_dict["name"] = self._gen_new_name(package_dict["title"])
+
 
         # Unless already set by an extension, get the owner organization (if any)
         # from the harvest source dataset
@@ -374,11 +384,10 @@ class CivityHarvester(HarvesterBase):
 
             # Save reference to the package on the object
             harvest_object.package_id = package_dict[ID]
+            harvest_object.current = True
             harvest_object.add()
 
-            # Defer constraints and flush so the dataset can be indexed with
-            # the harvest object id (on the after_show hook from the harvester
-            # plugin)
+            # Now safely defer and flush
             model.Session.execute(
                 "SET CONSTRAINTS harvest_object_package_id_fkey DEFERRED"
             )
@@ -400,40 +409,30 @@ class CivityHarvester(HarvesterBase):
 
         # In case of success (package_id is defined in that case), create the resources
         if package_id:
-            # Create resources
             if not self._create_resources(
                 resources, package_id, package_dict["title"], context, harvest_object
             ):
                 return False
-            # Also update labels in case of success
-            if get_harvester_setting(harvest_config_dict=harvest_object.source.config, config_name=RESOLVE_LABELS,
-                                     default_value=True):
+
+            if get_harvester_setting(harvest_config_dict=harvest_object.source.config, config_name=RESOLVE_LABELS, default_value=True):
                 resolve_labels(package_dict)
         else:
             return False
 
-        # Update harvester bookkeeping
-        # Get the last harvested object (if any)
-        previous_object = (
-            model.Session.query(HarvestObject)
-            .filter(HarvestObject.guid == harvest_object.guid)
-            .filter(HarvestObject.current == True)
-            .first()
-        )
+        # 🔧 Clear previous current HarvestObjects with the same GUID
+        model.Session.query(HarvestObject).filter(
+            HarvestObject.guid == harvest_object.guid,
+            HarvestObject.current == True,
+            HarvestObject.id != harvest_object.id
+        ).update({"current": False}, synchronize_session=False)
 
-        # Flag previous object as not current anymore
-        if previous_object:
-            previous_object.current = False
-            previous_object.add()
-
-        # Flag this object as the current one
+        # ✅ Mark this object as current
         harvest_object.current = True
         harvest_object.add()
 
         model.Session.commit()
 
         logger.debug("Finished import stage for harvest_object [%s]", harvest_object.id)
-
         return True
 
     def _create_or_update_package(
@@ -619,15 +618,3 @@ class CivityHarvester(HarvesterBase):
 
         return result
 
-    def _get_package_name(self, harvest_object, title):
-        package = harvest_object.package
-        if package is None or package.title != title:
-            name = self._gen_new_name(title)
-            if not name:
-                raise Exception(
-                    "Could not generate a unique name from the title or the GUID. Please choose a more unique title."
-                )
-        else:
-            name = package.name
-
-        return name

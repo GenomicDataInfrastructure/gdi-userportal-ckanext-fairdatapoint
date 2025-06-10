@@ -44,9 +44,9 @@ jobs:
         pip install -r dev-requirements.txt
         pip install --upgrade pytest-rerunfailures
         pip install -e 'git+https://github.com/CivityNL/ckanext-scheming.git@release-3.0.0-civity-1#egg=ckanext-scheming[requirements]'
-        pip install -e 'git+https://github.com/ckan/ckanext-harvest.git@v1.6.0#egg=ckanext-harvest[requirements]'
-        pip install -e 'git+https://github.com/ckan/ckanext-dcat.git@v2.2.0#egg=ckanext-dcat[requirements]'
-        pip install -r https://raw.githubusercontent.com/ckan/ckanext-dcat/v2.2.0/requirements.txt
+        pip install -e 'git+https://github.com/ckan/ckanext-harvest.git@v1.6.1#egg=ckanext-harvest[requirements]'
+        pip install -r https://raw.githubusercontent.com/ckan/ckanext-harvest/v1.6.1/requirements.txt
+        pip install ckanext-dcat==2.3.0
         python3 setup.py develop
     - name: Setup extension
       run: |
