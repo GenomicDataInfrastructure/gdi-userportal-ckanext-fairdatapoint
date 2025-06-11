@@ -6,7 +6,7 @@ import logging
 
 from ckan.plugins import toolkit
 
-from ckanext.fairdatapoint.harvesters.civity_harvester import CivityHarvester
+from ckanext.fairdatapoint.harvesters.fdp_harvester import FairDataPointHarvester
 from ckanext.fairdatapoint.harvesters.config import get_harvester_setting
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import (
     FairDataPointRecordProvider,
@@ -23,7 +23,7 @@ HARVEST_CATALOG = "harvest_catalogs"
 log = logging.getLogger(__name__)
 
 
-class FairDataPointCivityHarvester(CivityHarvester):
+class FairDataPointCivityHarvester(FairDataPointHarvester):
     def setup_record_provider(self, harvest_url, harvest_config_dict):
         # Harvest catalog config can be set on global CKAN level, but can be overriden by harvest config
         harvest_catalogs = get_harvester_setting(

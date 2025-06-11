@@ -75,7 +75,7 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points="""
         [ckan.plugins]
-        fairdatapointharvester=ckanext.fairdatapoint.harvesters:FairDataPointCivityHarvester
+        fairdatapointharvester=ckanext.fairdatapoint.harvesters:FairDataPointHarvester
         fairdatapoint=ckanext.fairdatapoint.plugin:FairdatapointPlugin
         
         [ckan.rdf.profiles]

@@ -3,4 +3,4 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-from ckanext.fairdatapoint.harvesters.fair_data_point_civity_harvester import FairDataPointCivityHarvester
+from ckanext.fairdatapoint.harvesters.fdp_harvester import FairDataPointHarvester

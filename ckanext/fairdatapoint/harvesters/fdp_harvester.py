@@ -37,13 +37,13 @@ def text_traceback():
     return res
 
 
-class CivityHarvesterException(Exception):
+class FairDataPointHarvesterException(Exception):
     pass
 
 
-class CivityHarvester(HarvesterBase):
+class FairDataPointHarvester(HarvesterBase):
     """
-    A Harvester base class for multiple Civity harvesters. This class contains the harvester bookkeeping and delegates
+    A Harvester base class for multiple FairDataPoint harvesters. This class contains the harvester bookkeeping and delegates
     the harvester specific work to a RecordProvider (to access records from a harvest source) and a
     RecordToPackageConverter to convert proprietary data from the harvest source to CKAN packages.
     """

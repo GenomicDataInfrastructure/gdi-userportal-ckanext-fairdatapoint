@@ -8,12 +8,12 @@ from unittest.mock import MagicMock, patch
 from ckanext.fairdatapoint.harvesters.config import get_harvester_setting
 import ckanext.fairdatapoint.plugin as plugin
 from ckanext.fairdatapoint.harvesters import (
-    FairDataPointCivityHarvester,
+    FairDataPointHarvester,
     fair_data_point_civity_harvester,
 )
 
 
-class TestFairDataPointCivityHarvester(unittest.TestCase):
+class TestFairDataPointHarvester(unittest.TestCase):
 
     def setUp(self):
         plugin.toolkit = MagicMock()
@@ -48,7 +48,7 @@ class TestFairDataPointCivityHarvester(unittest.TestCase):
     )
     def test_setup_record_provider(self, get_harvester_setting, mock_record_provider):
         mock_record_provider.return_value = None
-        harvester = FairDataPointCivityHarvester()
+        harvester = FairDataPointHarvester()
         get_harvester_setting.return_value = True
         harvest_url = "http://example.com"
         harvest_config_dict = {fair_data_point_civity_harvester.HARVEST_CATALOG: "true"}
@@ -65,7 +65,7 @@ class TestFairDataPointCivityHarvester(unittest.TestCase):
     )
     def test_setup_record_to_package_converter_with_profile(self, mock_converter):
         mock_converter.return_value = None
-        harvester = FairDataPointCivityHarvester()
+        harvester = FairDataPointHarvester()
         harvest_url = "http://example.com"
         harvest_config_dict = {fair_data_point_civity_harvester.PROFILE: "test_profile"}
         harvester.setup_record_to_package_converter(harvest_url, harvest_config_dict)
@@ -73,7 +73,7 @@ class TestFairDataPointCivityHarvester(unittest.TestCase):
 
     def test_setup_record_to_package_converter_raises_exception(self):
         # Instantiate the harvester
-        harvester = FairDataPointCivityHarvester()
+        harvester = FairDataPointHarvester()
 
         # Test data without PROFILE in the dictionary
         harvest_url = "http://example.com"
