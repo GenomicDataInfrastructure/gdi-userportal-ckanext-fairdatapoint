@@ -5,7 +5,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from ckanext.fairdatapoint.harvesters.civity_harvester import CivityHarvester
+from ckanext.fairdatapoint.harvesters.fdp_harvester import FairDataPointHarvester
 from ckanext.harvest.model import HarvestObjectExtra as HOExtra
 
 
@@ -41,7 +41,7 @@ def harvest_object(mock_harvest_source, mock_harvest_job):
 
 @pytest.fixture
 def dummy_harvester():
-    class DummyFDPHarvester(CivityHarvester):
+    class DummyFDPHarvester(FairDataPointHarvester):
         def setup_record_provider(self, harvest_url, harvest_config_dict):
             self.record_provider = MagicMock()
             self.record_provider.get_record_by_id = MagicMock()
@@ -61,7 +61,7 @@ def dummy_harvester():
 @pytest.fixture
 def configurable_harvester():
     def _create(record_return_value):
-        class DummyFDPHarvester(CivityHarvester):
+        class DummyFDPHarvester(FairDataPointHarvester):
             def setup_record_provider(self, url, config):
                 self.record_provider = MagicMock()
                 self.record_provider.get_record_by_id = MagicMock(return_value=record_return_value)
@@ -71,9 +71,9 @@ def configurable_harvester():
         return DummyFDPHarvester()
     return _create
 
-@patch("ckanext.fairdatapoint.harvesters.civity_harvester.HOExtra")
-@patch("ckanext.fairdatapoint.harvesters.civity_harvester.HarvestObject")
-@patch("ckanext.fairdatapoint.harvesters.civity_harvester.model.Session.query")
+@patch("ckanext.fairdatapoint.harvesters.fdp_harvester.HOExtra")
+@patch("ckanext.fairdatapoint.harvesters.fdp_harvester.HarvestObject")
+@patch("ckanext.fairdatapoint.harvesters.fdp_harvester.model.Session.query")
 def test_gather_stage_creates_new_object(mock_query, mock_HO, mock_HOExtra, dummy_harvester, mock_harvest_job):
     dummy_harvester._get_guids_in_harvest = lambda job: {"new-guid"}
     dummy_harvester._get_guids_to_package_ids_from_database = lambda job: {}
@@ -96,8 +96,8 @@ def test_gather_stage_creates_new_object(mock_query, mock_HO, mock_HOExtra, dumm
         extras=[ho_extra_mock],
     )
 
-@patch("ckanext.fairdatapoint.harvesters.civity_harvester.HOExtra")
-@patch("ckanext.fairdatapoint.harvesters.civity_harvester.HarvestObject")
+@patch("ckanext.fairdatapoint.harvesters.fdp_harvester.HOExtra")
+@patch("ckanext.fairdatapoint.harvesters.fdp_harvester.HarvestObject")
 def test_gather_stage_creates_change_object(mock_HO, mock_HOExtra, dummy_harvester, mock_harvest_job):
     dummy_harvester._get_guids_in_harvest = lambda job: {"change-guid"}
     dummy_harvester._get_guids_to_package_ids_from_database = lambda job: {
@@ -120,9 +120,9 @@ def test_gather_stage_creates_change_object(mock_HO, mock_HOExtra, dummy_harvest
         extras=["Extra(status=change)"]
     )
 
-@patch("ckanext.fairdatapoint.harvesters.civity_harvester.HOExtra")
-@patch("ckanext.fairdatapoint.harvesters.civity_harvester.HarvestObject")
-@patch("ckanext.fairdatapoint.harvesters.civity_harvester.model.Session.query")
+@patch("ckanext.fairdatapoint.harvesters.fdp_harvester.HOExtra")
+@patch("ckanext.fairdatapoint.harvesters.fdp_harvester.HarvestObject")
+@patch("ckanext.fairdatapoint.harvesters.fdp_harvester.model.Session.query")
 def test_gather_stage_creates_delete_object_and_marks_not_current(mock_query, mock_HO, mock_HOExtra, dummy_harvester, mock_harvest_job):
 
     # Setup GUIDs
@@ -224,7 +224,7 @@ def test_import_stage_delete_status(dummy_harvester, harvest_object):
     harvest_object.extras = [HOExtra(key="status", value="delete")]
     harvest_object.package_id = "pkg-delete"
 
-    with patch("ckanext.fairdatapoint.harvesters.civity_harvester.toolkit.get_action") as get_action:
+    with patch("ckanext.fairdatapoint.harvesters.fdp_harvester.toolkit.get_action") as get_action:
         delete_action = MagicMock()
         get_action.return_value = delete_action
 
@@ -258,7 +258,7 @@ def test_import_stage_success_new_package(dummy_harvester, harvest_object):
     }
     harvest_object.content = "<rdf>dummy content</rdf>"
 
-    with patch("ckanext.fairdatapoint.harvesters.civity_harvester.model.Session") as mock_session:
+    with patch("ckanext.fairdatapoint.harvesters.fdp_harvester.model.Session") as mock_session:
         result = dummy_harvester.import_stage(harvest_object)
 
         assert result is True
@@ -280,7 +280,7 @@ def test_import_stage_success_update(dummy_harvester, harvest_object):
     }
     harvest_object.content = "<rdf>dummy content</rdf>"
 
-    with patch("ckanext.fairdatapoint.harvesters.civity_harvester.model.Session") as mock_session:
+    with patch("ckanext.fairdatapoint.harvesters.fdp_harvester.model.Session") as mock_session:
         result = dummy_harvester.import_stage(harvest_object)
 
         assert result is True
