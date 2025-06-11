@@ -12,6 +12,33 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.4.0] - 2025-06-10
+
+### Added
+- fix(feat) Finishing up UT for gather phase by @Hans-Chrstian in f0c4f90
+
+
+### Changed
+- Use name instead of guid instead by @Hans-christian in 2f60959
+- Apply suggestions from code review by @Hans-Christian in bae45a4
+- Update .github/workflows/test.yml by @Hans-Christian in 415dd04
+- Feat(UT) Added UT for import stage by @Hans-Christian van der Werf in 9b76348
+- Added Ut for gather phase by @Hans-Chrstian in 48810fd
+- test(harvester): add unit tests for fetch_stage covering all status scenarios by @Hans-Chrstian in d54c62b
+- test(harvester): add unit tests for fetch_stage covering all status scenarios by @Hans-Chrstian in e9297b3
+- Applied sourcery comments by @Hans-Chrstian in 8c9ac1a
+- Update ckanext/fairdatapoint/harvesters/civity_harvester.py by @Hans-Christian in db97ce7
+- chore(deps): update redis docker tag to v8 by @Renovate Bot in bf2dd95
+- doc: update CHANGELOG.md for v1.3.6 by @LNDS-Sysadmins in 3d670e0
+
+
+### Fixed
+- fix(ut) gather objects by @Hans-Christian van der Werf in f873372
+- fix(UT) Add correct fixture to get UT working by @Hans-Chrstian in 1b3d51a
+- fix UT by @Hans-Chrstian in d5c05b5
+- fix(harvester): ensure unique package name, proper current flag, and prevent duplicate harvest objects by @Hans-Chrstian in d8a0e67
+
+
 ## [v1.3.6] - 2025-04-10
 
 ### Added
