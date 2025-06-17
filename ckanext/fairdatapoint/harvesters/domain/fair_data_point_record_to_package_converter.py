@@ -17,20 +17,27 @@ class FairDataPointRecordToPackageConverter:
     def __init__(self, profile: str):
         self.profile = profile
 
-    def record_to_package(self, guid: str, record: str):
+    def record_to_package(self, guid: str, record: str, series_mapping=None):
         parser = FairDataPointRDFParser(profiles=[self.profile])
 
         try:
             parser.parse(record, _format="ttl")
 
             identifier = Identifier(guid)
-            if identifier.get_id_type() == "catalog":
-                for catalog in parser.catalogs():
-                    return catalog
+            datatype = identifier.get_id_type()
+            if datatype == "catalog":
+                items = list(parser.catalogs())
+            elif datatype == "dataseries":
+                items = list(parser.dataset_series())
             else:
-                for dataset in parser.datasets():
-                    return dataset
+                items = list(parser.datasets(series_mapping=series_mapping))
+
+            if not items:
+                log.warning("No %s found in RDF", datatype)
+                return None  # Returning None instead of False for clarity
+
+            return items[0]  # Assuming single item per record
         except RDFParserException as e:
             raise Exception(
-                "Error parsing the RDF content [{0}]: {1}".format(record, e)
+                f"Error parsing the RDF content [{record}]: {e}"
             )

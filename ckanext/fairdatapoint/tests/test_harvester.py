@@ -60,14 +60,15 @@ def dummy_harvester():
 
 @pytest.fixture
 def configurable_harvester():
-    def _create(record_return_value):
+    def _create(record_return_value, package_return_value):
         class DummyFDPHarvester(CivityHarvester):
             def setup_record_provider(self, url, config):
                 self.record_provider = MagicMock()
                 self.record_provider.get_record_by_id = MagicMock(return_value=record_return_value)
 
             def setup_record_to_package_converter(self, url, config):
-                pass
+                self.record_to_package_converter = MagicMock()
+                self.record_to_package_converter.record_to_package= MagicMock(return_value=package_return_value)
         return DummyFDPHarvester()
     return _create
 
@@ -192,7 +193,7 @@ def test_fetch_stage_status_delete(dummy_harvester, harvest_object):
     assert result is True
 
 def test_fetch_stage_successful_fetch(configurable_harvester, harvest_object):
-    harvester = configurable_harvester("<rdf>dummy content</rdf>")
+    harvester = configurable_harvester("<rdf>dummy content</rdf>", configurable_harvester)
     result = harvester.fetch_stage(harvest_object)
 
     assert result is True
@@ -200,7 +201,7 @@ def test_fetch_stage_successful_fetch(configurable_harvester, harvest_object):
     harvest_object.save.assert_called_once()
 
 def test_fetch_stage_empty_record(configurable_harvester, harvest_object):
-    harvester = configurable_harvester(None)
+    harvester = configurable_harvester(None, None)
     harvester._save_object_error = MagicMock()
     harvest_object.extras = [HOExtra(key="status", value="change")]
 
@@ -251,19 +252,24 @@ def test_import_stage_conversion_error(dummy_harvester, harvest_object):
 
 
 def test_import_stage_success_new_package(dummy_harvester, harvest_object):
-    dummy_harvester.setup_record_to_package_converter(harvest_object.source.url, {})
-    dummy_harvester.record_to_package_converter.record_to_package.return_value = {
+    harvester = dummy_harvester
+    harvester.setup_record_to_package_converter(harvest_object.source.url, {})
+    harvester.record_to_package_converter.record_to_package.return_value = {
         "title": "My Dataset",
+        "name": "my-dataset",
         "resources": []
     }
+
     harvest_object.content = "<rdf>dummy content</rdf>"
+    # Ensure _create_or_update_package and _create_resources are mocked for isolation
+    harvester._create_or_update_package = MagicMock(return_value="pkg-123")
+    harvester._create_resources = MagicMock(return_value=True)
 
     with patch("ckanext.fairdatapoint.harvesters.civity_harvester.model.Session") as mock_session:
-        result = dummy_harvester.import_stage(harvest_object)
-
+        result = harvester.import_stage(harvest_object)
         assert result is True
-        dummy_harvester._create_or_update_package.assert_called_once()
-        dummy_harvester._create_resources.assert_called_once()
+        harvester._create_or_update_package.assert_called_once()
+        harvester._create_resources.assert_called_once()
         assert harvest_object.current is True
         harvest_object.add.assert_called()
         mock_session.commit.assert_called()
@@ -286,4 +292,45 @@ def test_import_stage_success_update(dummy_harvester, harvest_object):
         assert result is True
         dummy_harvester._create_or_update_package.assert_called_once()
         dummy_harvester._create_resources.assert_called_once()
+        mock_session.commit.assert_called()
+
+
+def test_import_stage_dataset_links_to_existing_series(configurable_harvester, harvest_object):
+    # This test verifies that a dataset can be updated to include a link to an existing dataseries.
+    # Note: The reverse (adding datasets to a dataseries) is not handled here.
+    dataset_guid = "dataset=https://fdp.example.org/dataset/abc"
+    dataseries_guid = "dataseries=https://fdp.example.org/datasetseries/xyz"
+    harvest_object.guid = dataset_guid
+    harvest_object.extras = [HOExtra(key="status", value="change")]
+    harvest_object.package_id = "existing-dataset"
+    harvest_object.content = "<rdf>dummy dataset referencing series</rdf>"
+
+    package_to_return = {
+        "title": "Updated Dataset",
+        "name": "updated-dataset",
+        "resources": [],
+        "in_series": [dataseries_guid],
+        "owner_org": harvest_object.owner_org,
+    }
+
+    harvester = configurable_harvester(harvest_object.content, package_to_return)
+    harvester._create_or_update_package = MagicMock(return_value="pkg-123")
+
+    with patch("ckanext.fairdatapoint.harvesters.civity_harvester.model.Session") as mock_session, \
+         patch("ckanext.fairdatapoint.harvesters.civity_harvester.toolkit.get_action") as mock_get_action:
+        mock_query = MagicMock()
+        mock_query.join.return_value.filter.return_value.filter.return_value.filter.return_value.all.return_value = [
+            (dataseries_guid, "series-xyz")
+        ]
+        mock_session.query.return_value = mock_query
+
+        result = harvester.import_stage(harvest_object)
+
+        assert result is True
+        assert harvest_object.current is True
+        harvester._create_or_update_package.assert_called_once()
+        updated_pkg = harvester._create_or_update_package.call_args[0][0]
+        assert updated_pkg["id"] == "existing-dataset"
+        # Ensure that only the dataset receives the in_series update
+        assert dataseries_guid in updated_pkg["in_series"]
         mock_session.commit.assert_called()

@@ -41,6 +41,10 @@ class FairDataPointRecordProvider:
                 identifier = Identifier("")
                 identifier.add("dataset", str(fdp_record.url))
                 result[identifier.guid] = fdp_record.url
+            elif fdp_record.is_dataseries():
+                identifier = Identifier("")
+                identifier.add("dataseries", str(fdp_record.url))
+                result[identifier.guid] = fdp_record.url
         return result.keys()
 
     def get_record_by_id(self, guid: str) -> str:

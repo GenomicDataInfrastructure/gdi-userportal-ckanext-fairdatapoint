@@ -15,12 +15,11 @@ import ckan.plugins.toolkit as toolkit
 from ckan import model
 
 from ckanext.fairdatapoint.harvesters.config import get_harvester_setting
+from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 from ckanext.fairdatapoint.labels import resolve_labels
 from ckanext.harvest.harvesters import HarvesterBase
 from ckanext.harvest.model import HarvestObject
 from ckanext.harvest.model import HarvestObjectExtra as HOExtra
-
-
 
 ID = "id"
 
@@ -97,11 +96,18 @@ class CivityHarvester(HarvesterBase):
         guids_in_db = set(guids_to_package_ids.keys())
 
         guids_in_harvest = self._get_guids_in_harvest(harvest_job)
-
         if guids_in_harvest:
-            new = guids_in_harvest - guids_in_db
-            delete = guids_in_db - guids_in_harvest
-            change = guids_in_db & guids_in_harvest
+            # Sort so that dataseries are processed before datasets
+            guids_in_harvest = sorted(
+                guids_in_harvest,
+                key=lambda g: 0 if "dataseries=" in g else 1
+            )
+
+            guids_in_harvest_set = set(guids_in_harvest)
+
+            new = guids_in_harvest_set - guids_in_db
+            delete = guids_in_db - guids_in_harvest_set
+            change = guids_in_db & guids_in_harvest_set
 
             for guid in new:
                 existing = (
@@ -302,9 +308,26 @@ class CivityHarvester(HarvesterBase):
             return False
 
         try:
-            package_dict = self.record_to_package_converter.record_to_package(
-                harvest_object.guid, str(harvest_object.content)
-            )
+            # Determine datatype
+            identifier_harvest_object = Identifier(harvest_object.guid)
+            datatype = identifier_harvest_object.get_id_type()
+
+            if datatype == "dataset":
+                # Build mapping from dataseries GUID to package ID for all active dataset_series in the database
+                series_results = model.Session.query(model.PackageExtra.value, model.Package.id) \
+                    .join(model.Package) \
+                    .filter(model.PackageExtra.key == 'guid') \
+                    .filter(model.Package.type == 'dataset_series') \
+                    .filter(model.Package.state == 'active') \
+                    .all()
+                series_mapping = {guid: {"id": series_id} for guid, series_id in series_results}
+                package_dict = self.record_to_package_converter.record_to_package(
+                    harvest_object.guid, str(harvest_object.content), series_mapping=series_mapping
+                )
+            else:
+                package_dict = self.record_to_package_converter.record_to_package(
+                    harvest_object.guid, str(harvest_object.content)
+                )
         except Exception as e:
             logger.error(
                 "Error converting record to package for identifier [%s] [%r]"
@@ -351,6 +374,7 @@ class CivityHarvester(HarvesterBase):
             logger.exception("Unexpected error during name generation for package")
             self._save_object_error(str(e), harvest_object)
             return False
+
 
         # Fallback: ensure name is always set
         if "name" not in package_dict:
@@ -434,6 +458,7 @@ class CivityHarvester(HarvesterBase):
 
         logger.debug("Finished import stage for harvest_object [%s]", harvest_object.id)
         return True
+
 
     def _create_or_update_package(
         self, package_dict, create_or_update, context, harvest_object
