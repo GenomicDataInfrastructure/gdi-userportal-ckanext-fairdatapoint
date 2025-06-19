@@ -328,6 +328,7 @@ class CivityHarvester(HarvesterBase):
                 package_dict = self.record_to_package_converter.record_to_package(
                     harvest_object.guid, str(harvest_object.content)
                 )
+            package_dict.setdefault("extras", []).append({"key": "guid", "value": identifier_harvest_object.get_id_value()})
         except Exception as e:
             logger.error(
                 "Error converting record to package for identifier [%s] [%r]"
