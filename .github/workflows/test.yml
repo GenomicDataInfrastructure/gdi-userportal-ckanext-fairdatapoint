@@ -55,8 +55,8 @@ jobs:
         # Scheming (Civity fork)
         pip install -e 'git+https://github.com/CivityNL/ckanext-scheming.git@3.0.0-civity-1#egg=ckanext-scheming[requirements]'
 
-        git clone https://github.com/hcvdwerf/ckanext-dcat
-        cd ckanext-dcat
+        git clone https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-dcat
+        cd gdi-userportal-ckanext-dcat
         git checkout support-RDF-dataseries-serialisation
         pip install -e .
         pip install -r requirements.txt
