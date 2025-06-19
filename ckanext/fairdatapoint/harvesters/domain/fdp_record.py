@@ -23,3 +23,6 @@ class FdpRecord:
 
     def is_dataset(self):
         return (URIRef(self.url), RDF.type, DCAT.Dataset) in self._graph
+
+    def is_dataseries(self):
+        return (URIRef(self.url), RDF.type, DCAT.DatasetSeries) in self._graph

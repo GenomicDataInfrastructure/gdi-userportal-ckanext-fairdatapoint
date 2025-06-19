@@ -33,7 +33,7 @@ class TestRecordProvider:
             (
                     Path(TEST_DATA_DIRECTORY, "root_fdp_response.ttl"),
                     {
-                        'dataset=http://example.org/Dataset1',
+                        'dataseries=http://example.org/DatasetSeries1', 'dataset=http://example.org/Dataset1'
                     }
             ),
             (
@@ -62,6 +62,7 @@ class TestRecordProvider:
             (
                     Path(TEST_DATA_DIRECTORY, "fdp_multiple_parents.ttl"),
                     {
+                        'dataseries=http://example.org/Dataseries1',
                         'dataset=http://example.org/Dataset1'
                     },
             )

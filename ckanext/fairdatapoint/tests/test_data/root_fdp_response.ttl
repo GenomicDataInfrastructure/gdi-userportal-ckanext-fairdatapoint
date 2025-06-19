@@ -7,15 +7,23 @@
 @prefix ldp: <http://www.w3.org/ns/ldp#> .
 @prefix ex: <http://example.org/> .
 
+########### Catalog ###########
 ex:Catalog1 a ldp:DirectContainer, dcat:Catalog ;
     dct:title "Catalog of Datasets"@en ;
     ldp:membershipResource ex:Catalog1 ;
     ldp:hasMemberRelation dcat:dataset ;
+    ldp:contains ex:DatasetSeries1 .
+
+########### Dataset Series as LDP Container ###########
+ex:DatasetSeries1 a ldp:DirectContainer, dcat:DatasetSeries ;
+    dct:title "Genomic Studies over Time"@en ;
+    dct:description "A series of genomic datasets collected across multiple years and studies."@en ;
+    ldp:membershipResource ex:DatasetSeries1 ;
+    ldp:hasMemberRelation dcat:hasPart ;
     ldp:contains ex:Dataset1 .
 
-# Dataset under Dataseries
+########### Dataset belonging to the series ###########
 ex:Dataset1 a dcat:Dataset ;
-    dct:title "Genomic Variation Dataset"@en ;
-    dct:description "Genomic data collected from multiple populations."@en .
-
-
+    dct:title "Genomic Variation Dataset 2023"@en ;
+    dct:description "Genomic data collected from multiple populations in 2023."@en ;
+    dcat:inSeries ex:DatasetSeries1 .
