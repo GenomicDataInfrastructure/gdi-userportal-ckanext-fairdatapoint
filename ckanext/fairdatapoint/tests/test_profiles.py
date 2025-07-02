@@ -38,7 +38,7 @@ def test_parse_dataset():
     actual = fdp_record_to_package.record_to_package(
         guid="catalog=https://health-ri.sandbox.semlab-leiden.nl/catalog/5c85cb9f-be4a-406c-ab0a-287fa787caa0;"
              "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d9956191-1aff-4181-ac8b-16b829135ed5",
-        record=data)
+        record=data, series_mapping=None)
     expected = {
         'extras': [],
         'resources': [

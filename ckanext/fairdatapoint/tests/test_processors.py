@@ -36,7 +36,7 @@ class TestProcessors:
         data = Graph().parse(Path(TEST_DATA_DIRECTORY, "fdp_catalog.ttl")).serialize()
         fdp_record_to_package.record_to_package(
             guid="catalog=https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d",
-            record=data)
+            record=data, series_mapping=None)
         assert parser_catalogs.called
 
     def test_fdp_record_converter_dataset_dict(self):
@@ -46,7 +46,7 @@ class TestProcessors:
             guid="catalog=https://covid19initiatives.health-ri.nl/p/ProjectOverview?focusarea="
                  "http://purl.org/zonmw/generic/10006;"
                  "dataset=https://covid19initiatives.health-ri.nl/p/Project/27866022694497978",
-            record=data)
+            record=data, series_mapping=None)
         expected_dataset = dict(extras=[], uri="https://covid19initiatives.health-ri.nl/p/Project/27866022694497978",
                                 resources=[], title="COVID-NL cohort MUMC+",
                                 notes="Clinical data of MUMC COVID-NL cohort", tags=[],
@@ -64,7 +64,8 @@ class TestProcessors:
         data = Graph().parse(Path(TEST_DATA_DIRECTORY, "fdp_catalog.ttl")).serialize()
         actual = fdp_record_to_package.record_to_package(
             guid="catalog=https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d",
-            record=data)
+            record=data, series_mapping=None)
+
 
         expected = {
             "uri": "https://fair.healthinformationportal.eu/catalog/1c75c2c9-d2cc-44cb-aaa8-cf8c11515c8d",

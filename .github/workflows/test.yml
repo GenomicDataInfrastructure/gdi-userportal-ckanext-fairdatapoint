@@ -38,16 +38,28 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Install requirements
+    - name: Install requirements (common)
       run: |
         pip install -r requirements.txt
         pip install -r dev-requirements.txt
-        pip install --upgrade pytest-rerunfailures
-        pip install -e 'git+https://github.com/CivityNL/ckanext-scheming.git@release-3.0.0-civity-1#egg=ckanext-scheming[requirements]'
-        pip install -e 'git+https://github.com/ckan/ckanext-harvest.git@v1.6.1#egg=ckanext-harvest[requirements]'
-        pip install -r https://raw.githubusercontent.com/ckan/ckanext-harvest/v1.6.1/requirements.txt
-        pip install ckanext-dcat==2.3.0
-        python3 setup.py develop
+        pip install -e .
+    - name: Setup CKAN extensions (harvest, scheming, dcat)
+      run: |
+        # Harvest v1.6.1 from GitHub
+        git clone https://github.com/ckan/ckanext-harvest
+        cd ckanext-harvest
+        git checkout tags/v1.6.1
+        pip install -e .
+        pip install -r requirements.txt
+
+        # Scheming (Civity fork)
+        pip install -e 'git+https://github.com/CivityNL/ckanext-scheming.git@3.0.0-civity-1#egg=ckanext-scheming[requirements]'
+
+        git clone https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-dcat
+        cd gdi-userportal-ckanext-dcat
+        git checkout master
+        pip install -e .
+        pip install -r requirements.txt
     - name: Setup extension
       run: |
         sed -i -e 's/use = config:.*/use = config:\/srv\/app\/src\/ckan\/test-core.ini/' test.ini
