@@ -57,7 +57,7 @@ jobs:
 
         git clone https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-dcat
         cd gdi-userportal-ckanext-dcat
-        git checkout support-RDF-dataseries-serialisation
+        git checkout master
         pip install -e .
         pip install -r requirements.txt
     - name: Setup extension
