@@ -40,4 +40,4 @@ class FairDataPointRecordToPackageConverter:
         except RDFParserException as e:
             raise Exception(
                 f"Error parsing the RDF content [{record}]: {e}"
-            )
+            ) from e
