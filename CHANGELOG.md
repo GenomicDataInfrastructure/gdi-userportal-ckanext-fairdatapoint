@@ -12,6 +12,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.5.0] - 2025-07-02
+
+### Added
+- feat(dataseries) Be able to store dataseries via FDP route by @Hans-christian in 51df1a3
+
+
+### Changed
+- Applied review comments by @Hans-christian in 78d1f85
+- Update ckanext/fairdatapoint/harvesters/domain/fair_data_point_record_to_package_converter.py by @Hans-Christian in 1f99faa
+- store link fdp <-> ckan by @Hans-christian in a4bd378
+- chore(deps): update sonarsource/sonarcloud-github-action action to v5 by @Renovate Bot in 25b2861
+- doc: update CHANGELOG.md for v1.4.0 by @LNDS-Sysadmins in 711bace
+
+
+### Fixed
+- fix test.yml by @Hans-christian in 0b5fad4
+- fix: dev-requirements.txt to reduce vulnerabilities by @snyk-bot in 2d02690
+- fix sonarcloud by @Hans-christian in f116c25
+
+
 ## [v1.4.0] - 2025-06-10
 
 ### Added
