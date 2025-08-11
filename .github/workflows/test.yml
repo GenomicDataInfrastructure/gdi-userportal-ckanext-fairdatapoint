@@ -37,7 +37,7 @@ jobs:
       CKAN_REDIS_URL: redis://redis:6379/1
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Install requirements (common)
       run: |
         pip install -r requirements.txt
@@ -78,6 +78,6 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: REUSE Compliance Check
       uses: fsfe/reuse-action@v5
