@@ -20,6 +20,33 @@ PACKAGE_REPLACE_FIELDS = [
     "language",
     "spatial_uri",
     "theme",
+    "dcat_type",
+    "code_values",
+    "coding_system",
+    "health_category",
+    "health_theme",
+    "publisher_type",
+    "frequency",
+    "qualified_relation",
+    "type",
+    "quality_annotation",
+    "legal_basis",
+    "personal_data",
+    "purpose",
+    "status",
+]
+RESOURCE_REPLACE_FIELDS = [
+    "format",
+    "language",
+    "access_rights",
+    "conforms_to",
+]
+ACCESS_SERVICES_REPLACE_FIELDS = [
+    "access_rights",
+    "conforms_to",
+    "format",
+    "language",
+    "keyword"
 ]
 
 # Languages to resolve labels in
@@ -81,7 +108,7 @@ def resolve_labels(package_dict: dict) -> int:
 
 
 def get_list_unresolved_terms(
-    terms: list[str], languages: list[str] = RESOLVE_LANGUAGES
+        terms: list[str], languages: list[str] = RESOLVE_LANGUAGES
 ) -> list[str]:
     """This function gets a list of terms not fully known by CKAN, based on an input list
 
@@ -143,6 +170,22 @@ def _is_absolute_uri(uri: str) -> bool:
     return parsable
 
 
+def _append_value(term_list, val):
+    # helper to append single or list values
+    if isinstance(val, list):
+        for v in val:
+            if isinstance(v, URIRef):
+                term_list.append(str(v))
+            elif isinstance(v, str):
+                term_list.append(v)
+    else:
+        if isinstance(val, URIRef):
+            term_list.append(str(val))
+        elif isinstance(val, str):
+            term_list.append(val)
+    return term_list
+
+
 def terms_in_package_dict(package_dict: dict) -> list[str]:
     """Extracts list of all terms from a dictionary that could theoretically be resolved
 
@@ -160,41 +203,28 @@ def terms_in_package_dict(package_dict: dict) -> list[str]:
 
     for key in PACKAGE_REPLACE_FIELDS:
         if values := package_dict.get(key):
-            if isinstance(values, list):
-                term_list.extend(values)
-            elif isinstance(values, str) or isinstance(values, URIRef):
-                term_list.append(values)
+            term_list = _append_value(term_list, values)
 
-    # Now filter if URI and only return URIs
+    # resources can be nested in the package
+    resources = package_dict.get("resources")
+    if resources and isinstance(resources, list):
+        for res in resources:
+            if not isinstance(res, dict):
+                continue
+            for key in RESOURCE_REPLACE_FIELDS:
+                if values := res.get(key):
+                    term_list = _append_value(term_list, values)
+
+            # access_services can be nested inside resources
+            access_services = res.get("access_services")
+            if access_services and isinstance(access_services, list):
+                for svc in access_services:
+                    if not isinstance(svc, dict):
+                        continue
+                    for key in ACCESS_SERVICES_REPLACE_FIELDS:
+                        if values := svc.get(key):
+                            term_list = _append_value(term_list, values)
+
+    # Now filter if URI and only return absolute http(s) URIs
     valid_term_list = [term for term in term_list if _is_absolute_uri(term)]
     return valid_term_list
-
-
-def _is_absolute_uri(uri: str) -> bool:
-    """Checks if a given URI is an absolute http or https URI.
-
-    Checks for three things:
-    1. Scheme is either `http` or `https`
-    2. A netloc is defined (domain name)
-    3. A path is defined
-
-    Parameters
-    ----------
-    uri : str
-        URI that needs to be checked
-
-    Returns
-    -------
-    bool
-        True if resolvale URI, False if not
-    """
-    try:
-        # If URI cannot be parsed we can safely assume it's invalid
-        parsed_uri = urlparse(uri)
-    except (ValueError, AttributeError):
-        return False
-
-    parsable = bool(
-        parsed_uri.scheme in ["http", "https"] and parsed_uri.netloc and parsed_uri.path
-    )
-    return parsable
