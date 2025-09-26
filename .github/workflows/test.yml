@@ -44,6 +44,7 @@ jobs:
       - uses: actions/checkout@v5
       - name: REUSE Compliance Check
         uses: fsfe/reuse-action@v5
+
       - name: Install requirements (common)
         run: |
           pip install -r requirements.txt
@@ -80,12 +81,16 @@ jobs:
       - name: Run tests
         run: |
           pytest --ckan-ini=test.ini --cov=ckanext.fairdatapoint --disable-warnings ckanext/fairdatapoint
+      - name: Set SONAR_TOKEN env
+        run: echo "SONAR_TOKEN=${{ secrets.SONAR_TOKEN }}" >> $GITHUB_ENV
       - name: Generate coverage report
         run: |
           coverage xml -o coverage.xml
       - name: Install unzip
+        if: ${{ env.SONAR_TOKEN != '' }}
         run: apt-get update && apt-get install -y unzip
       - name: Sonar scan
+        if: ${{ env.SONAR_TOKEN != '' }}
         uses: SonarSource/sonarqube-scan-action@v6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
