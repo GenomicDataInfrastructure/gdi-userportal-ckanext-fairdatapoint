@@ -72,7 +72,6 @@ jobs:
             pip install -r requirements.txt
           fi
           cd ..
-
       - name: Setup extension
         run: |
           sed -i -e 's/use = config:.*/use = config:\/srv\/app\/src\/ckan\/test-core.ini/' test.ini
