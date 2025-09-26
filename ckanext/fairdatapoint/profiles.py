@@ -91,9 +91,12 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
             sanitized[lang] = [tag['name'] for tag in cleaned]
 
             if len(values) != len(sanitized[lang]):
+                removed_tags = [v for v in values if v not in sanitized[lang]]
                 log.warning(
-                    'Removed invalid tags for language %s during multilingual sanitation',
-                    lang
+                    'Removed invalid tags for language %s during multilingual sanitation. Original: %r, Removed: %r',
+                    lang,
+                    values,
+                    removed_tags
                 )
 
         return sanitized
