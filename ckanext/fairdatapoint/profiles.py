@@ -64,11 +64,42 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
     def parse_dataset(self, dataset_dict: Dict, dataset_ref: URIRef) -> Dict:
         super(FAIRDataPointDCATAPProfile, self).parse_dataset(dataset_dict, dataset_ref)
 
-        dataset_dict['tags'] = validate_tags(dataset_dict['tags'])
+        tags_translated = dataset_dict.get('tags_translated')
+        if isinstance(tags_translated, dict):
+            dataset_dict['tags_translated'] = self._sanitize_tags_translated(tags_translated)
+
+            default_lang_tags = dataset_dict['tags_translated'].get(self._default_lang) or next(
+                (values for values in dataset_dict['tags_translated'].values() if values),
+                []
+            )
+            dataset_dict['tags'] = [{'name': tag} for tag in default_lang_tags]
+
+        dataset_dict['tags'] = validate_tags(dataset_dict.get('tags', []))
 
         dataset_dict = self._fix_wikidata_uris(dataset_dict, PACKAGE_REPLACE_FIELDS)
 
         return dataset_dict
+
+    def _sanitize_tags_translated(self, tags_translated: Dict[str, List[str]]) -> Dict[str, List[str]]:
+        """Remove invalid multilingual tags to satisfy CKAN length rules."""
+
+        sanitized: Dict[str, List[str]] = {}
+
+        for lang, values in tags_translated.items():
+            tag_dicts = [{'name': value} for value in values if value]
+            cleaned = validate_tags(tag_dicts)
+            sanitized[lang] = [tag['name'] for tag in cleaned]
+
+            if len(values) != len(sanitized[lang]):
+                removed_tags = [v for v in values if v not in sanitized[lang]]
+                log.warning(
+                    'Removed invalid tags for language %s during multilingual sanitation. Original: %r, Removed: %r',
+                    lang,
+                    values,
+                    removed_tags
+                )
+
+        return sanitized
 
     @staticmethod
     def _rewrite_wikidata_url(uri: str) -> str:
