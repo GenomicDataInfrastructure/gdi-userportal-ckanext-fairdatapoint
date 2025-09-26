@@ -72,8 +72,6 @@ jobs:
           fi
           cd ..
 
-          # Fluent extension
-          pip install -e 'git+https://github.com/ckan/ckanext-fluent.git#egg=ckanext-fluent'
       - name: Setup extension
         run: |
           sed -i -e 's/use = config:.*/use = config:\/srv\/app\/src\/ckan\/test-core.ini/' test.ini
