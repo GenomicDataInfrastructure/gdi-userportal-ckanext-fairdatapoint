@@ -72,6 +72,7 @@ jobs:
             pip install -r requirements.txt
           fi
           cd ..
+
       - name: Setup extension
         run: |
           sed -i -e 's/use = config:.*/use = config:\/srv\/app\/src\/ckan\/test-core.ini/' test.ini
@@ -80,8 +81,6 @@ jobs:
       - name: Run tests
         run: |
           pytest --ckan-ini=test.ini --cov=ckanext.fairdatapoint --disable-warnings ckanext/fairdatapoint
-      - name: Set SONAR_TOKEN env
-        run: echo "SONAR_TOKEN=${{ secrets.SONAR_TOKEN }}" >> $GITHUB_ENV
       - name: Generate coverage report
         run: |
           coverage xml -o coverage.xml
