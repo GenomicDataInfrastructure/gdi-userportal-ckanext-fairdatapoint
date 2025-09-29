@@ -85,12 +85,7 @@ class resolvable_label_resolver:
                 ):
                     # Normalize missing language to DEFAULT_LABEL_LANG
                     lang = x.language or DEFAULT_LABEL_LANG
-
-                    # Only include languages that are explicitly allowed
-                    if lang in LANG_LIST:
-                        lang_dict[lang] = x.value
-                    else:
-                        continue
+                    lang_dict[lang] = x.value
 
         return lang_dict
 
@@ -179,7 +174,7 @@ class resolvable_label_resolver:
         lang_code (string) - the language code of the translation, e.g. 'de'
         """
         for language, label in translation_dict.items():
-            if language:
+            if language and language in LANG_LIST:
                 ckan_translation_list.append(
                     {
                         "term": str(subject_uri),
@@ -187,13 +182,13 @@ class resolvable_label_resolver:
                         "lang_code": language,
                     }
                 )
-            else:
-                ckan_translation_list.append(
-                    {
-                        "term": str(subject_uri),
-                        "term_translation": label,
-                        "lang_code": DEFAULT_LABEL_LANG,
-                    }
-                )
+            # else:
+            #     ckan_translation_list.append(
+            #         {
+            #             "term": str(subject_uri),
+            #             "term_translation": label,
+            #             "lang_code": DEFAULT_LABEL_LANG,
+            #         }
+            #     )
 
         return ckan_translation_list
