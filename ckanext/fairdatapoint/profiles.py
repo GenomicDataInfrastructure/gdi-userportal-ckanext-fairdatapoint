@@ -17,7 +17,7 @@ from dateutil.parser import ParserError
 from rdflib import DCAT, DCTERMS, FOAF, Namespace, URIRef
 
 from ckanext.dcat.profiles import EuropeanHealthDCATAPProfile
-from ckanext.fairdatapoint.labels import PACKAGE_REPLACE_FIELDS
+from ckanext.fairdatapoint.labels import PACKAGE_REPLACE_FIELDS, resolve_labels
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +67,8 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
         dataset_dict['tags'] = validate_tags(dataset_dict['tags'])
 
         dataset_dict = self._fix_wikidata_uris(dataset_dict, PACKAGE_REPLACE_FIELDS)
+
+        resolve_labels(dataset_dict)
 
         return dataset_dict
 
