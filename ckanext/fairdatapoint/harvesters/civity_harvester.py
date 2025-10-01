@@ -14,9 +14,7 @@ from abc import abstractmethod
 import ckan.plugins.toolkit as toolkit
 from ckan import model
 
-from ckanext.fairdatapoint.harvesters.config import get_harvester_setting
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
-from ckanext.fairdatapoint.labels import resolve_labels
 from ckanext.harvest.harvesters import HarvesterBase
 from ckanext.harvest.model import HarvestObject
 from ckanext.harvest.model import HarvestObjectExtra as HOExtra
@@ -439,8 +437,8 @@ class CivityHarvester(HarvesterBase):
             ):
                 return False
 
-            if get_harvester_setting(harvest_config_dict=harvest_object.source.config, config_name=RESOLVE_LABELS, default_value=True):
-                resolve_labels(package_dict)
+            # if get_harvester_setting(harvest_config_dict=harvest_object.source.config, config_name=RESOLVE_LABELS, default_value=True):
+            #     resolve_labels(package_dict)
         else:
             return False
 
