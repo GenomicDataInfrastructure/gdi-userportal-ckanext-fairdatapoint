@@ -2,16 +2,15 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 
-import json
-from pathlib import Path
-
 import pytest
+from datetime import datetime
+from dateutil.tz import tzutc
+from pathlib import Path
 from rdflib import Graph
-
-from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
-    FairDataPointRecordToPackageConverter,
-)
 from ckanext.fairdatapoint.profiles import validate_tags
+from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
+    FairDataPointRecordToPackageConverter
+)
 
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
 
@@ -40,71 +39,38 @@ def test_parse_dataset():
         guid="catalog=https://health-ri.sandbox.semlab-leiden.nl/catalog/5c85cb9f-be4a-406c-ab0a-287fa787caa0;"
              "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d9956191-1aff-4181-ac8b-16b829135ed5",
         record=data, series_mapping=None)
-    extras_dict = {item["key"]: item["value"] for item in actual["extras"]}
+    expected = {
+        'extras': [],
+        'resources': [
+            {'name': 'Clinical data for [PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)',
+             'description': 'Clinical data for [PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)',
+             'access_url': 'https://cbioportal.health-ri.nl/study/clinicalData?id=lgg_ucsf_2014',
+             'license': 'http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0',
+             'url': 'https://cbioportal.health-ri.nl/study/clinicalData?id=lgg_ucsf_2014',
+             'uri': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/931ed9c4-ad23-47ff-b121-2eb428e57423',
+             'distribution_ref': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/931ed9c4-ad23-47ff-b121-2eb428e57423'},
+            {'name': 'Mutations',
+             'description': 'Mutation data from whole exome sequencing of 23 grade II glioma tumor/normal pairs. (MAF)',
+             'access_url': 'https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014',
+             'license': 'http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0',
+             'url': 'https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014',
+             'uri': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/ad00299f-6efb-42aa-823d-5ff2337f38f7',
+             'distribution_ref': 'https://health-ri.sandbox.semlab-leiden.nl/distribution/ad00299f-6efb-42aa-823d-5ff2337f38f7'}
+        ],
+        'title': '[PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)',
+        'notes': 'Whole exome sequencing of 23 grade II glioma tumor/normal pairs.',
+        'url': 'https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014',
+        'tags': [{'name': 'CNS Brain'}, {'name': 'Diffuse Glioma'}, {'name': 'Glioma'}],
+        'license_id': '',
+        'issued': '2019-10-30 23:00:00',
+        'modified': '2019-10-30 23:00:00',
+        'identifier': 'lgg_ucsf_2014',
+        'language': ['http://id.loc.gov/vocabulary/iso639-1/en'],
+        'conforms_to': ['https://health-ri.sandbox.semlab-leiden.nl/profile/2f08228e-1789-40f8-84cd-28e3288c3604'],
+        'publisher': [
+            {'email': '', 'identifier': '', 'name': '', 'type': '', 'uri': 'https://www.health-ri.nl', 'url': ''}],
+        'uri': 'https://health-ri.sandbox.semlab-leiden.nl/dataset/d9956191-1aff-4181-ac8b-16b829135ed5',
+        'is_referenced_by': ['https://pubmed.ncbi.nlm.nih.gov/24336570']  # Make this a list to match 'actual'
+    }
 
-    expected_resources = [
-        {
-            "name": "Clinical data for [PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)",
-            "description": "Clinical data for [PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)",
-            "access_url": "https://cbioportal.health-ri.nl/study/clinicalData?id=lgg_ucsf_2014",
-            "license": "http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0",
-            "url": "https://cbioportal.health-ri.nl/study/clinicalData?id=lgg_ucsf_2014",
-            "uri": "https://health-ri.sandbox.semlab-leiden.nl/distribution/931ed9c4-ad23-47ff-b121-2eb428e57423",
-            "distribution_ref": "https://health-ri.sandbox.semlab-leiden.nl/distribution/931ed9c4-ad23-47ff-b121-2eb428e57423",
-        },
-        {
-            "name": "Mutations",
-            "description": "Mutation data from whole exome sequencing of 23 grade II glioma tumor/normal pairs. (MAF)",
-            "access_url": "https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014",
-            "license": "http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0",
-            "url": "https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014",
-            "uri": "https://health-ri.sandbox.semlab-leiden.nl/distribution/ad00299f-6efb-42aa-823d-5ff2337f38f7",
-            "distribution_ref": "https://health-ri.sandbox.semlab-leiden.nl/distribution/ad00299f-6efb-42aa-823d-5ff2337f38f7",
-        },
-    ]
-
-    assert len(actual["resources"]) == len(expected_resources)
-    for actual_resource, expected_resource in zip(actual["resources"], expected_resources):
-        assert actual_resource["retention_period"] == []
-        for field, value in expected_resource.items():
-            assert actual_resource[field] == value
-
-    assert actual["title"] == "[PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)"
-    assert actual["notes"] == "Whole exome sequencing of 23 grade II glioma tumor/normal pairs."
-    assert actual["url"] == "https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014"
-    assert actual["tags"] == [
-        {"name": "CNS Brain"},
-        {"name": "Diffuse Glioma"},
-        {"name": "Glioma"},
-    ]
-    assert actual["license_id"] == ""
-    assert actual["issued"] == "2019-10-30 23:00:00"
-    assert actual["modified"] == "2019-10-30 23:00:00"
-    assert actual["publisher"] == [
-        {
-            "email": "",
-            "identifier": "",
-            "name": "",
-            "type": "",
-            "uri": "https://www.health-ri.nl",
-            "url": "",
-        }
-    ]
-    assert actual["retention_period"] == []
-
-    assert extras_dict["identifier"] == "lgg_ucsf_2014"
-    assert json.loads(extras_dict["language"]) == [
-        "http://id.loc.gov/vocabulary/iso639-1/en"
-    ]
-    assert json.loads(extras_dict["conforms_to"]) == [
-        "https://health-ri.sandbox.semlab-leiden.nl/profile/2f08228e-1789-40f8-84cd-28e3288c3604"
-    ]
-    assert extras_dict["publisher_uri"] == "https://www.health-ri.nl"
-    assert (
-        extras_dict["uri"]
-        == "https://health-ri.sandbox.semlab-leiden.nl/dataset/d9956191-1aff-4181-ac8b-16b829135ed5"
-    )
-    assert extras_dict["homepage"] == "http://localhost:5000"
-    assert json.loads(extras_dict["is_referenced_by"]) == [
-        "https://pubmed.ncbi.nlm.nih.gov/24336570"
-    ]
+    assert actual == expected
