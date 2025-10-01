@@ -16,7 +16,6 @@ from ckan import model
 
 from ckanext.fairdatapoint.harvesters.config import get_harvester_setting
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
-from ckanext.fairdatapoint.labels import resolve_labels
 from ckanext.harvest.harvesters import HarvesterBase
 from ckanext.harvest.model import HarvestObject
 from ckanext.harvest.model import HarvestObjectExtra as HOExtra

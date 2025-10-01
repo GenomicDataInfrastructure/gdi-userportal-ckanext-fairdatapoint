@@ -119,6 +119,7 @@ def test_resolve_label_happy_flow(
             "lang_code": "nl",
         },
     ]
+    expected_filtered_translation_list = translation_list[1:]
 
     load_and_translate_uri.return_value = translation_list
     get_action.return_value.return_value = {"success": "3 updated succesfully"}
@@ -127,5 +128,5 @@ def test_resolve_label_happy_flow(
 
     get_action.return_value.assert_called_once_with(
         {"ignore_auth": True, "defer_commit": True},
-        {"data": translation_list},
+        {"data": expected_filtered_translation_list},
     )
