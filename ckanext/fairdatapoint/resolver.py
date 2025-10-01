@@ -138,9 +138,9 @@ class resolvable_label_resolver:
             else:
                 self.label_graph.parse(uri)
         # RDFlib can throw a LOT of exceptions and they are not all
-        except Exception:
-            # log.info("Could not load Graph for URI %s.", uri)
-            log.info("Could not load Graph for URI %s. Trying XML format.", uri)
+        except Exception as e:
+            log.error("Could not load Graph for URI %s due to exception: %s", uri, e, exc_info=True)
+            log.info("Trying XML format for URI %s.", uri)
             try:
                 self.label_graph.parse(uri, format="xml")
             except Exception:

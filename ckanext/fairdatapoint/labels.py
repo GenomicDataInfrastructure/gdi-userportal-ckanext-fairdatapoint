@@ -189,11 +189,10 @@ def _append_value(term_list, val):
                 term_list.append(str(v))
             elif isinstance(v, str):
                 term_list.append(v)
-    else:
-        if isinstance(val, URIRef):
-            term_list.append(str(val))
-        elif isinstance(val, str):
-            term_list.append(val)
+    elif isinstance(val, URIRef):
+        term_list.append(str(val))
+    elif isinstance(val, str):
+        term_list.append(val)
     return term_list
 
 
