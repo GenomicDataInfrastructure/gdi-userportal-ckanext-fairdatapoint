@@ -128,7 +128,7 @@ class resolvable_label_resolver:
                     "Accept": "application/json",  # request JSON-LD
                     "Authorization": f"apikey token={api_key}"
                 }
-                response = requests.get(url, headers=headers)
+                response = requests.get(url, headers=headers, timeout=10)
 
                 if response.status_code == 200:
                     self.label_graph.parse(data=response.text, format="json-ld")
