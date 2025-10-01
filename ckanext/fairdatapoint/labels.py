@@ -90,9 +90,19 @@ def resolve_labels(package_dict: dict) -> int:
 
             # term_translation_update is a privileged function
             # Thank god CKAN is like Hollywood OS and we can just override
+            # Extra defensive filter: ensure only supported language codes are sent
+            filtered_translation_list = [
+                t for t in translation_list if t.get("lang_code") in RESOLVE_LANGUAGES
+            ]
+
+            if not filtered_translation_list:
+                log.debug("No translations in allowed languages to update")
+                return 0
+
+
             updated_labels = toolkit.get_action("term_translation_update_many")(
                 {"ignore_auth": True, "defer_commit": True},
-                {"data": translation_list},
+                {"data": filtered_translation_list},
             )
 
             if "success" not in updated_labels:

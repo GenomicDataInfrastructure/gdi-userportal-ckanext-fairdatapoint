@@ -41,7 +41,6 @@ def get_bioportal_api_key() -> Optional[str]:
     """
  
     api_key = toolkit.config.get("ckanext.fairdatapoint.bioportal_api_key")
-    print(api_key)
     if not api_key:
         return None
  
