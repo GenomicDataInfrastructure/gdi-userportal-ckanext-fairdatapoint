@@ -133,8 +133,8 @@ class resolvable_label_resolver:
                 if response.status_code == 200:
                     self.label_graph.parse(data=response.text, format="json-ld")
                 else:
-                    print(f"Failed to fetch data: {response.status_code}")
-                    print(response.text)
+                    log.error("Failed to fetch data: %s", response.status_code)
+                    log.error("Response text: %s", response.text)
             else:
                 self.label_graph.parse(uri)
         # RDFlib can throw a LOT of exceptions and they are not all
