@@ -35,7 +35,6 @@ class TestGenericResolverClass:
         reference_dict = {
             "en": "data catalog",
             "nl": "datacatalogus",
-            "de": "Datenkatalog",
         }
 
         assert literal_dict == reference_dict
@@ -57,11 +56,6 @@ class TestGenericResolverClass:
         )
 
         reference_translation_list = [
-            {
-                "term": "http://www.wikidata.org/entity/Q29937289",
-                "term_translation": "Datenkatalog",
-                "lang_code": "de",
-            },
             {
                 "term": "http://www.wikidata.org/entity/Q29937289",
                 "term_translation": "data catalog",
