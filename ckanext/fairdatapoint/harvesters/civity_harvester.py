@@ -436,9 +436,6 @@ class CivityHarvester(HarvesterBase):
                 resources, package_id, package_dict["title"], context, harvest_object
             ):
                 return False
-
-            # if get_harvester_setting(harvest_config_dict=harvest_object.source.config, config_name=RESOLVE_LABELS, default_value=True):
-            #     resolve_labels(package_dict)
         else:
             return False
 
