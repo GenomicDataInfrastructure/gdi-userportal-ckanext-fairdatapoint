@@ -6,12 +6,17 @@ from __future__ import annotations
 import logging
 
 from rdflib import RDFS, SDO, SKOS, Graph, URIRef
+import re
+import requests
+from ckanext.fairdatapoint.harvesters.config import get_bioportal_api_key
 
 log = logging.getLogger(__name__)
 
 
 # Default language for a label if it is not defined (Literal without language tag)
 DEFAULT_LABEL_LANG = "en"
+LANG_LIST = ["en", "nl"]
+SKIP_URIS = []
 
 
 class resolvable_label_resolver:
@@ -20,7 +25,7 @@ class resolvable_label_resolver:
     This class implements a generic label resolver. It consists of three functions:
     1. load_graph
     2. literal_dict_from_graph
-    3. load_and_translate_uricov
+    3. load_and_translate_uri
 
     The functions are made for the generic case: assuming the subject URI is resolvable and will
     return an RDF document when accessed using content negotiation. This can work for some of the
@@ -51,9 +56,9 @@ class resolvable_label_resolver:
         }
         ```
 
-        Literals without a language tag are stored in a `None` key. If there is multiple Literals
-        without a language, it is undefined behavior which one will actually end up in the
-        dictionary as the order of graphs is, by their nature, undefined.
+        Literals without a language tag are normalized to `DEFAULT_LABEL_LANG`. Only languages
+        present in `LANG_LIST` will be included; others are skipped. If there are multiple
+        labels for the same language the last one seen will overwrite the previous.
 
         Parameters
         ----------
@@ -78,7 +83,11 @@ class resolvable_label_resolver:
                     subject=subject,
                     predicate=label_predicate,
                 ):
-                    lang_dict[x.language] = x.value
+                    # Normalize missing language to DEFAULT_LABEL_LANG
+                    lang = x.language or DEFAULT_LABEL_LANG
+                    # Only keep languages we explicitly support
+                    if lang in LANG_LIST:
+                        lang_dict[lang] = x.value
 
         return lang_dict
 
@@ -97,14 +106,53 @@ class resolvable_label_resolver:
         Graph
             Loaded Graph
         """
+        if str(uri) in SKIP_URIS:
+            return self.label_graph
+        
         if empty_graph:
             del self.label_graph
             self.label_graph = Graph()
+
         try:
-            self.label_graph.parse(uri)
+            # Check if 'bioontology' is in the URI because of different request style
+            if re.search(r"bioontology.org", str(uri), re.IGNORECASE):
+                log.info("BioOntology URI detected: %s", uri)
+
+                ontology = uri.split("/ontology/")[1].split("/")[0]
+                encoded_concept = requests.utils.quote(uri, safe='')
+
+                url = f"https://data.bioontology.org/ontologies/{ontology}/classes/{encoded_concept}"
+                api_key = get_bioportal_api_key()
+
+                if not api_key:
+                    log.error("BioPortal API key is not configured. Cannot fetch data from BioOntology.")
+                    SKIP_URIS.append(str(uri))
+                    return self.label_graph
+
+                headers = {
+                    "Accept": "application/json",  # request JSON-LD
+                    "Authorization": f"apikey token={api_key}"
+                }
+                response = requests.get(url, headers=headers, timeout=10)
+
+                if response.status_code == 200:
+                    self.label_graph.parse(data=response.text, format="json-ld")
+                else:
+                    log.error("Failed to fetch data: %s", response.status_code)
+                    log.error("Response text: %s", response.text)
+                    SKIP_URIS.append(str(uri))
+            else:
+                self.label_graph.parse(uri)
         # RDFlib can throw a LOT of exceptions and they are not all
-        except Exception:
-            log.info("Could not load Graph for URI %s", uri)
+        except Exception as e:
+            log.error("Could not load Graph for URI %s due to exception: %s", uri, e, exc_info=True)
+            log.info("Trying XML format for URI %s.", uri)
+            try:
+                self.label_graph.parse(uri, format="xml")
+            except Exception:
+                log.warning("Could not load XML Graph for URI %s", uri)
+                SKIP_URIS.append(str(uri))
+
         return self.label_graph
 
     def load_and_translate_uri(self, subject_uri: str | URIRef) -> list[dict[str, str]]:
@@ -133,22 +181,14 @@ class resolvable_label_resolver:
         term_translation (string) - the translation of the term, e.g. 'Liebesroman'
         lang_code (string) - the language code of the translation, e.g. 'de'
         """
-
         for language, label in translation_dict.items():
-            if language:
+            # only append allowed languages
+            if language and language in LANG_LIST:
                 ckan_translation_list.append(
                     {
                         "term": str(subject_uri),
                         "term_translation": label,
                         "lang_code": language,
-                    }
-                )
-            else:
-                ckan_translation_list.append(
-                    {
-                        "term": str(subject_uri),
-                        "term_translation": label,
-                        "lang_code": DEFAULT_LABEL_LANG,
                     }
                 )
 

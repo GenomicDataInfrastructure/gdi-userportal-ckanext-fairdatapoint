@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-only
 from __future__ import annotations
+from typing import Optional
 
 from ckan.plugins import toolkit
 
@@ -29,3 +30,18 @@ def get_harvester_setting(harvest_config_dict: dict, config_name: str, default_v
             toolkit.config.get(f"ckanext.fairdatapoint.{config_name}", default_value)
         )
     return harvester_setting
+
+
+def get_bioportal_api_key() -> Optional[str]:
+    """Return the BioPortal API key configured for the FAIR Data Point extension.
+ 
+    The key is read from the CKAN configuration option
+    ``ckanext.fairdatapoint.bioportal_api_key`` and normalized to ``None`` when
+    unset or blank.
+    """ 
+    api_key = toolkit.config.get("ckanext.fairdatapoint.bioportal_api_key")
+    if not api_key:
+        return None
+ 
+    normalized_key = api_key.strip()
+    return normalized_key or None
