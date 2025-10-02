@@ -124,6 +124,11 @@ class resolvable_label_resolver:
                 url = f"https://data.bioontology.org/ontologies/{ontology}/classes/{encoded_concept}"
                 api_key = get_bioportal_api_key()
 
+                if not api_key:
+                    log.error("BioPortal API key is not configured. Cannot fetch data from BioOntology.")
+                    SKIP_URIS.append(str(uri))
+                    return self.label_graph
+
                 headers = {
                     "Accept": "application/json",  # request JSON-LD
                     "Authorization": f"apikey token={api_key}"
@@ -135,6 +140,7 @@ class resolvable_label_resolver:
                 else:
                     log.error("Failed to fetch data: %s", response.status_code)
                     log.error("Response text: %s", response.text)
+                    SKIP_URIS.append(str(uri))
             else:
                 self.label_graph.parse(uri)
         # RDFlib can throw a LOT of exceptions and they are not all

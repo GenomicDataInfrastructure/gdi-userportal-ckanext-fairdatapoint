@@ -38,8 +38,7 @@ def get_bioportal_api_key() -> Optional[str]:
     The key is read from the CKAN configuration option
     ``ckanext.fairdatapoint.bioportal_api_key`` and normalized to ``None`` when
     unset or blank.
-    """
- 
+    """ 
     api_key = toolkit.config.get("ckanext.fairdatapoint.bioportal_api_key")
     if not api_key:
         return None
