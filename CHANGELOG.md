@@ -12,6 +12,39 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.6.1] - 2025-10-03
+
+### Added
+- feat(multi-lingual-support) Added extra sanitasation on translated tags by @Hans-christian in d5fc478
+
+
+### Changed
+- Improve BioPortal API key handling and add tests by @Quinten in 62e42ce
+- Aplly correct logging by @Hans-christian in 87f3866
+- Apply suggestion from @sourcery-ai[bot] by @Hans-Christian in 68efa1f
+- Remove commented out code by @Hans-Christian in 965769e
+- Restrict label translations to supported languages by @Hans-christian in 74ed6d0
+- Remove token set by @Hans-christian in 1492b15
+- Bump packages by @Hans-christian in d3213f7
+- Apply suggestion from @sourcery-ai[bot] by @Hans-Christian in c299bd4
+- Fix test by @Hans-christian in fb035ed
+- update test.yml by @Hans-christian in 29cf6c4
+- chore(deps): update dependency rdflib to ~=7.2.1 by @Renovate Bot in 02c7b4b
+- chore(deps): update actions/checkout action to v5 by @Renovate Bot in 9fa1f01
+- doc: update CHANGELOG.md for v1.6.0 by @LNDS-Sysadmins in 116a1de
+
+
+### Fixed
+- fix release major minor and patch by @Hans-christian in 666f9b5
+- Improve error handling and code clarity in label resolver by @Quinten in dd07134
+- fix UT by @Hans-christian in 0c5e4fb
+- fix UT by @Hans-christian in 6845adc
+- fix test.yml by @Hans-christian in 8b751a2
+- fix run by @Hans-christian in 60b5c4b
+- patch sonar cloud by @Hans-christian in b38fe94
+- fix UT by @Hans-christian in 5e83d33
+
+
 ## [v1.6.0] - 2025-07-08
 
 ### Changed
