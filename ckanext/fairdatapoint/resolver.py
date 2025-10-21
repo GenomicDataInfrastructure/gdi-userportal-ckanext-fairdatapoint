@@ -145,13 +145,17 @@ class resolvable_label_resolver:
                 self.label_graph.parse(uri)
         # RDFlib can throw a LOT of exceptions and they are not all
         except Exception as e:
-            log.error("Could not load Graph for URI %s due to exception: %s", uri, e, exc_info=True)
-            log.info("Trying XML format for URI %s.", uri)
-            try:
-                self.label_graph.parse(uri, format="xml")
-            except Exception:
-                log.warning("Could not load XML Graph for URI %s", uri)
+            # Check if it's a 404 error. If so, skip retrying
+            if "404" in str(e) or "Not Found" in str(e):
+                log.error("URI %s returned 404 Not Found. Adding to skip list.", uri)
                 SKIP_URIS.append(str(uri))
+            else:
+                log.warning("Could not load Graph for URI %s. Trying XML format.", uri)
+                try:
+                    self.label_graph.parse(uri, format="xml")
+                except Exception:
+                    log.error("Could not load XML Graph for URI %s, because of error: %s", uri, e)
+                    SKIP_URIS.append(str(uri))
 
         return self.label_graph
 

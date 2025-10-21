@@ -34,13 +34,13 @@ PACKAGE_REPLACE_FIELDS = [
     "legal_basis",
     "personal_data",
     "purpose",
-    "status",
 ]
 RESOURCE_REPLACE_FIELDS = [
     "format",
     "language",
     "access_rights",
     "conforms_to",
+    "status",
 ]
 ACCESS_SERVICES_REPLACE_FIELDS = [
     "access_rights",
