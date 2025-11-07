@@ -20,8 +20,9 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # http://packaging.python.org/en/latest/tutorial.html#version
-    version="1.5.1",
-    description="""FAIR Data Point""",
+    version='0.0.3',
+
+    description='''FAIR Data Point''',
     long_description=long_description,
     long_description_content_type="text/markdown",
     # The project's main homepage.
