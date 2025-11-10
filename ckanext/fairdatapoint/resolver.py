@@ -116,8 +116,6 @@ class resolvable_label_resolver:
         try:
             # Check if 'bioontology' is in the URI because of different request style
             if re.search(r"bioontology.org", str(uri), re.IGNORECASE):
-                log.info("BioOntology URI detected: %s", uri)
-
                 ontology = uri.split("/ontology/")[1].split("/")[0]
                 encoded_concept = requests.utils.quote(uri, safe='')
 
@@ -147,15 +145,17 @@ class resolvable_label_resolver:
         except Exception as e:
             # Check if it's a 404 error. If so, skip retrying
             if "404" in str(e) or "Not Found" in str(e):
-                log.error("URI %s returned 404 Not Found. Adding to skip list.", uri)
+                log.warning("URI %s returned 404 Not Found. Adding to skip list.", uri)
                 SKIP_URIS.append(str(uri))
             else:
-                log.warning("Could not load Graph for URI %s. Trying XML format.", uri)
+                log.info("Could not load Graph for URI %s. Trying XML format.", uri)
                 try:
                     self.label_graph.parse(uri, format="xml")
                 except Exception:
-                    log.error("Could not load XML Graph for URI %s, because of error: %s", uri, e)
-                    SKIP_URIS.append(str(uri))
+                    try:
+                        self.label_graph.parse(uri, format="turtle")
+                    except Exception as e:
+                        SKIP_URIS.append(str(uri))
 
         return self.label_graph
 
