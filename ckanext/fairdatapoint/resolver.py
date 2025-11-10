@@ -148,7 +148,6 @@ class resolvable_label_resolver:
                 log.warning("URI %s returned 404 Not Found. Adding to skip list.", uri)
                 SKIP_URIS.append(str(uri))
             else:
-                log.info("Could not load Graph for URI %s. Trying XML format.", uri)
                 try:
                     self.label_graph.parse(uri, format="xml")
                 except Exception:

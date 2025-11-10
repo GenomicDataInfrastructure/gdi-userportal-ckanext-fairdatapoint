@@ -69,6 +69,46 @@ class TestGenericResolverClass:
 
         assert ckan_translation_list == reference_translation_list
 
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key")
+    def test_load_graph_bioontology_no_api_key(self, mock_api_key, mock_requests_get):
+        """When no API key is configured, URI should be skipped and no request made"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+
+        mock_api_key.return_value = None
+        resolver = resolvable_label_resolver()
+
+        test_uri = "http://purl.bioontology.org/ontology/ICD10CM/U07.1"
+        result_graph = resolver.load_graph(test_uri)
+
+        # No network call should be made
+        mock_requests_get.assert_not_called()
+        # URI should be added to skip list
+        assert test_uri in SKIP_URIS
+        # Graph is returned (may be empty), but crucially no exception bubbles up
+        assert isinstance(result_graph, Graph)
+
+    def test_load_graph_skips_already_skipped_uri(self):
+        """If URI is in SKIP_URIS, load_graph should return immediately without parsing"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+
+        resolver = resolvable_label_resolver()
+        # Seed the resolver with a small graph so we can check object identity
+        initial_graph = Graph()
+        initial_graph.parse(data="""
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            <http://example.org/thing> rdfs:label "Example"@en .
+        """, format="turtle")
+        resolver.label_graph = initial_graph
+
+        test_uri = "http://example.org/already-skipped"
+
+        # Call load_graph; because URI is skipped, it should simply return the current graph
+        returned_graph = resolver.load_graph(test_uri)
+        # Ensure it returned the same graph object and did not clear/replace it
+        assert returned_graph is initial_graph
+        assert len(returned_graph) == len(initial_graph)
+
     @patch("ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_graph")
     def test_load_translate_no_label(self, load_graph):
         resolver = resolvable_label_resolver()
