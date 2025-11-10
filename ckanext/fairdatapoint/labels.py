@@ -239,6 +239,7 @@ def _select_and_append_values(data_item: dict, fields_list: list, term_list: lis
 
 def terms_in_package_dict(package_dict: dict) -> list[str]:
     """Extracts list of all terms (including nested) from the dict that could theoretically be resolved as URIs"""
+    term_list = []
     term_list = _select_and_append_values(package_dict, PACKAGE_REPLACE_FIELDS, term_list)
     resources = package_dict.get("resources")
     if resources and isinstance(resources, list):
