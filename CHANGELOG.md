@@ -12,6 +12,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.6.4] - 2025-11-13
+
+### Changed
+- Update test_labels.py by @Quinten in 2ed2499
+- Add tests for term extraction and label resolution by @Quinten in 581f068
+- Add tests for FAIRDataPointDCATAPProfile tag and URL methods by @Quinten in ee3f288
+- Initialize term_list in terms_in_package_dict by @Quinten in 3b058ec
+- Improve label resolution and field handling by @Quinten in 0a2f3f0
+- chore(deps): update dependency rdflib to ~=7.4.0 by @Renovate Bot in 4bb9c80
+- doc: update CHANGELOG.md for v1.6.3 by @LNDS-Sysadmins in 3a780fc
+- Update fsfe/reuse-action action to v6 by @Renovate Bot in ba59914
+- doc: update CHANGELOG.md for v1.6.2 by @LNDS-Sysadmins in 592d6ea
+- doc: update CHANGELOG.md for v1.6.1 by @LNDS-Sysadmins in 8cd273b
+
+
+### Fixed
+- Update test_resolver.py by @Quinten in 90b1a13
+- Add tests for label resolver URI skipping logic by @Quinten in b4b982d
+
+
 ## [v1.6.3] - 2025-10-21
 
 ### Changed
