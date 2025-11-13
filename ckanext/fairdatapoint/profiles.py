@@ -139,8 +139,16 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
             new_value = None
             if value:
                 if isinstance(value, List):
-                    new_value = [self._rewrite_wikidata_url(uri) for uri in value]
-                else:
+                    rewritten = []
+                    for uri in value:
+                        if isinstance(uri, str):
+                            rewritten.append(self._rewrite_wikidata_url(uri))
+                        else:
+                            rewritten.append(uri)
+                    new_value = rewritten
+                elif isinstance(value, str):
                     new_value = self._rewrite_wikidata_url(value)
+                else:
+                    new_value = value
                 dataset_dict[field] = new_value
         return dataset_dict

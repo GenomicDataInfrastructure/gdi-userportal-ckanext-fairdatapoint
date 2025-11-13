@@ -15,44 +15,63 @@ log = logging.getLogger(__name__)
 
 PACKAGE_REPLACE_FIELDS = [
     "access_rights",
-    "conforms_to",
-    "has_version",
-    "language",
-    "spatial_uri",
-    "theme",
-    "dcat_type",
+    "applicable_legislation", #new
     "code_values",
     "coding_system",
+    "conforms_to",
+    "dcat_type",
+    "has_version",
     "health_category",
     "health_theme",
-    "publisher_type",
     "frequency",
-    "qualified_relation_role",
-    "type",
-    "quality_annotation_body",
-    "quality_annotation_target",
+    "language",
     "legal_basis",
     "personal_data",
+    "publisher_type",
     "purpose",
+    "qualified_attribution", #new (role in nested)
+    "qualified_relation", #new (role in nested)
+    "quality_annotation",#new (motivated_by in nested (of body of target toch))
+    "spatial_coverage", #new (was spatial_uri)
+    "status", #new
+    "theme",
+    "type", #new
 ]
 RESOURCE_REPLACE_FIELDS = [
-    "format",
-    "language",
     "access_rights",
+    "applicable_legislation", #new
     "conforms_to",
+    "format",
+    "hash_algorithm", #new
+    "language",
+    "license", #new
     "status",
 ]
 ACCESS_SERVICES_REPLACE_FIELDS = [
     "access_rights",
+    "applicable_legislation", #new
     "conforms_to",
+    "creator", #new
     "format",
+    "hvd_category", #new
     "language",
-    "keyword"
+    "license", #new
+    "publisher", #new
+    "theme", #new
 ]
 
 # Languages to resolve labels in
 # TODO language codes should be dynamic
 RESOLVE_LANGUAGES = ("en", "nl")
+
+NESTED_FIELD_TRANSLATIONS = {
+    "qualified_relation": {"role"},
+    "qualified_attribution": {"role"},
+    "quality_annotation": {"body"},
+    "spatial_coverage": {"uri"},
+    "creator": {"type"},
+    "publisher": {"type"},
+}
 
 
 def resolve_labels(package_dict: dict) -> int:
@@ -69,15 +88,12 @@ def resolve_labels(package_dict: dict) -> int:
         Number of successfully resolved labels, -1 if none needed to be resolved
 
     """
-    log.debug("Label resolving is requested")
     translation_list = []
 
     total_terms = terms_in_package_dict(package_dict)
     unresolved_terms = get_list_unresolved_terms(total_terms)
 
     if unresolved_terms:
-        log.debug("There are %d unresolved terms", len(unresolved_terms))
-
         resolver = resolvable_label_resolver()
 
         for term in unresolved_terms:
@@ -86,8 +102,6 @@ def resolve_labels(package_dict: dict) -> int:
 
         # Check if there is actually translations in the list
         if translation_list:
-            log.debug("Resolved %d labels", len(translation_list))
-
             # term_translation_update is a privileged function
             # Thank god CKAN is like Hollywood OS and we can just override
             # Extra defensive filter: ensure only supported language codes are sent
@@ -96,7 +110,6 @@ def resolve_labels(package_dict: dict) -> int:
             ]
 
             if not filtered_translation_list:
-                log.debug("No translations in allowed languages to update")
                 return 0
 
 
@@ -106,15 +119,12 @@ def resolve_labels(package_dict: dict) -> int:
             )
 
             if "success" not in updated_labels:
-                log.warning("Error updating labels: %s", updated_labels)
+                log.error("Error updating labels: %s", updated_labels)
             else:
-                log.debug("Updated %s labels in database", updated_labels["success"])
                 return len(translation_list)
         else:
-            log.debug("No labels succesfully resolved")
             return 0
     else:
-        log.debug("There are no unresolved terms!")
         return -1
 
 
@@ -196,45 +206,52 @@ def _append_value(term_list, val):
     return term_list
 
 
+def _collect_values_for_field(field: str, value, term_list: list) -> list:
+    if value is None:
+        return term_list
+    nested_fields = NESTED_FIELD_TRANSLATIONS.get(field)
+    if isinstance(value, list):
+        for item in value:
+            if nested_fields and isinstance(item, dict):
+                for nested_field in nested_fields:
+                    if nested_field in item:
+                        term_list = _collect_values_for_field(
+                            nested_field, item[nested_field], term_list
+                        )
+            else:
+                term_list = _append_value(term_list, item)
+        return term_list
+    if isinstance(value, dict):
+        if nested_fields:
+            for nested_field in nested_fields:
+                if nested_field in value:
+                    term_list = _collect_values_for_field(
+                        nested_field, value[nested_field], term_list
+                    )
+        return term_list
+    return _append_value(term_list, value)
+
+def _select_and_append_values(data_item: dict, fields_list: list, term_list: list) -> list:
+    for key, value in data_item.items():
+        if key in fields_list:
+            term_list = _collect_values_for_field(key, value, term_list)
+    return term_list
+
 def terms_in_package_dict(package_dict: dict) -> list[str]:
-    """Extracts list of all terms from a dictionary that could theoretically be resolved
-
-    Parameters
-    ----------
-    package_dict : dict
-        Package dictionary that is harvested and parsed by a profile
-
-    Returns
-    -------
-    list[str]
-        List of URIs that could theoretically be resolved
-    """
+    """Extracts list of all terms (including nested) from the dict that could theoretically be resolved as URIs"""
     term_list = []
-
-    for key in PACKAGE_REPLACE_FIELDS:
-        if values := package_dict.get(key):
-            term_list = _append_value(term_list, values)
-
-    # resources can be nested in the package
+    term_list = _select_and_append_values(package_dict, PACKAGE_REPLACE_FIELDS, term_list)
     resources = package_dict.get("resources")
     if resources and isinstance(resources, list):
         for res in resources:
             if not isinstance(res, dict):
                 continue
-            for key in RESOURCE_REPLACE_FIELDS:
-                if values := res.get(key):
-                    term_list = _append_value(term_list, values)
-
-            # access_services can be nested inside resources
+            term_list = _select_and_append_values(res, RESOURCE_REPLACE_FIELDS, term_list)
             access_services = res.get("access_services")
             if access_services and isinstance(access_services, list):
                 for svc in access_services:
                     if not isinstance(svc, dict):
                         continue
-                    for key in ACCESS_SERVICES_REPLACE_FIELDS:
-                        if values := svc.get(key):
-                            term_list = _append_value(term_list, values)
-
-    # Now filter if URI and only return absolute http(s) URIs
+                    term_list = _select_and_append_values(svc, ACCESS_SERVICES_REPLACE_FIELDS, term_list)
     valid_term_list = [term for term in term_list if _is_absolute_uri(term)]
     return valid_term_list

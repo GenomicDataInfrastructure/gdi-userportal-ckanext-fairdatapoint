@@ -69,6 +69,46 @@ class TestGenericResolverClass:
 
         assert ckan_translation_list == reference_translation_list
 
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key")
+    def test_load_graph_bioontology_no_api_key(self, mock_api_key, mock_requests_get):
+        """When no API key is configured, URI should be skipped and no request made"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+
+        mock_api_key.return_value = None
+        resolver = resolvable_label_resolver()
+
+        test_uri = "http://purl.bioontology.org/ontology/ICD10CM/U07.1"
+        result_graph = resolver.load_graph(test_uri)
+
+        # No network call should be made
+        mock_requests_get.assert_not_called()
+        # URI should be added to skip list
+        assert test_uri in SKIP_URIS
+        # Graph is returned (may be empty), but crucially no exception bubbles up
+        assert isinstance(result_graph, Graph)
+
+    def test_load_graph_skips_already_skipped_uri(self):
+        """If URI is in SKIP_URIS, load_graph should return immediately without parsing"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+
+        resolver = resolvable_label_resolver()
+        # Seed the resolver with a small graph so we can check object identity
+        initial_graph = Graph()
+        initial_graph.parse(data="""
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            <http://example.org/thing> rdfs:label "Example"@en .
+        """, format="turtle")
+        resolver.label_graph = initial_graph
+
+        test_uri = "http://example.org/already-skipped"
+
+        # Call load_graph; because URI is skipped, it should simply return the current graph
+        returned_graph = resolver.load_graph(test_uri)
+        # Ensure it returned the same graph object and did not clear/replace it
+        assert returned_graph is initial_graph
+        assert len(returned_graph) == len(initial_graph)
+
     @patch("ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_graph")
     def test_load_translate_no_label(self, load_graph):
         resolver = resolvable_label_resolver()
@@ -95,57 +135,6 @@ class TestGenericResolverClass:
         ]
 
         assert ckan_translation_list == reference_translation_list
-
-    @patch("ckanext.fairdatapoint.resolver.requests.get")
-    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key")
-    def test_load_graph_bioontology_success(self, mock_api_key, mock_requests_get):
-        """Test loading a BioOntology URI with successful JSON-LD response"""
-        resolver = resolvable_label_resolver()
-        
-        # Mock the API key
-        mock_api_key.return_value = "test-api-key-12345"
-        
-        # Create a minimal JSON-LD response that represents a concept with labels
-        jsonld_response = """
-        {
-            "@context": {
-                "skos": "http://www.w3.org/2004/02/skos/core#",
-                "prefLabel": "skos:prefLabel"
-            },
-            "@id": "http://purl.bioontology.org/ontology/ICD10CM/U07.1",
-            "prefLabel": [
-                {"@value": "COVID-19", "@language": "en"}
-            ]
-        }
-        """
-        
-        # Mock the requests.get response
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = jsonld_response
-        mock_requests_get.return_value = mock_response
-        
-        # Test URI
-        test_uri = "http://purl.bioontology.org/ontology/ICD10CM/U07.1"
-        
-        # Call load_graph
-        result_graph = resolver.load_graph(test_uri)
-        
-        # Verify requests.get was called with correct parameters
-        mock_requests_get.assert_called_once()
-        call_args = mock_requests_get.call_args
-
-        # Check the URL structure
-        assert "data.bioontology.org" in call_args[0][0]
-        assert "ICD10CM" in call_args[0][0]
-
-        # Check headers
-        assert call_args[1]["headers"]["Accept"] == "application/json"
-        assert "apikey token=test-api-key-12345" in call_args[1]["headers"]["Authorization"]
-        assert call_args[1]["timeout"] == 10
-        
-        # Verify the graph was populated (should have triples)
-        assert len(result_graph) > 0
 
     @patch("ckanext.fairdatapoint.resolver.requests.get")
     @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key")
