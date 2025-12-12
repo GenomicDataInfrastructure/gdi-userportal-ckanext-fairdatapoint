@@ -85,7 +85,9 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
 
         return dataset_dict
 
-    def _sanitize_tags_translated(tags_translated: Dict[str, List[str]]) -> Dict[str, List[str]]:
+    def _sanitize_tags_translated(
+        self, tags_translated: Dict[str, List[str]]
+    ) -> Dict[str, List[str]]:
         """Remove invalid multilingual tags to satisfy CKAN length rules."""
 
         sanitized: Dict[str, List[str]] = {}
@@ -106,7 +108,7 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
 
         return sanitized
 
-    def _rewrite_wikidata_url(uri: str) -> str:
+    def _rewrite_wikidata_url(self, uri: str) -> str:
         """This function fixes Wikidata URIs to use references instead of web URI
 
         It is necessary to fix this for label resolving, as subject in the graph won't match
@@ -188,7 +190,7 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
 
         return dataset_dict
 
-    def _should_remove_conforms_to_value(value: str) -> bool:
+    def _should_remove_conforms_to_value(self, value: str) -> bool:
         """
         Check if a conforms_to value should be removed using regex pattern matching.
 
