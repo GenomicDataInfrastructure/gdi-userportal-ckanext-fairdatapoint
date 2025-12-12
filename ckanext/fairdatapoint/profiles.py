@@ -108,8 +108,7 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
 
         return sanitized
 
-    @staticmethod
-    def _rewrite_wikidata_url(uri: str) -> str:
+    def _rewrite_wikidata_url(self, uri: str) -> str:
         """This function fixes Wikidata URIs to use references instead of web URI
 
         It is necessary to fix this for label resolving, as subject in the graph won't match
@@ -177,21 +176,10 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
                     if not self._should_remove_conforms_to_value(value):
                         filtered_values.append(value)
                 else:
-                    # Keep non-string values as is
                     filtered_values.append(value)
-
-            if filtered_values != values_to_filter:
-                removed_values = [
-                    v for v in values_to_filter if v not in filtered_values
-                ]
-                log.info(
-                    "Removed conforms_to values matching profile pattern: %r",
-                    removed_values,
-                )
 
             # Update the dataset_dict with the filtered values
             if filtered_values:
-                log.debug("Filtered conforms_to values: %r", filtered_values)
                 dataset_dict["conforms_to"] = (
                     filtered_values
                     if isinstance(conforms_to, list)
@@ -202,8 +190,7 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
 
         return dataset_dict
 
-    @staticmethod
-    def _should_remove_conforms_to_value(value: str) -> bool:
+    def _should_remove_conforms_to_value(self, value: str) -> bool:
         """
         Check if a conforms_to value should be removed using regex pattern matching.
 
