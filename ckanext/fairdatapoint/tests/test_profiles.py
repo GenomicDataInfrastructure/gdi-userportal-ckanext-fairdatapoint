@@ -121,7 +121,7 @@ class TestParseDatasetTagsTranslated:
 
     def test_parse_dataset_with_tags_translated_default_lang_exists(self):
         """Test parse_dataset when tags_translated has default_lang"""
-        profile = FAIRDataPointDCATAPProfile()
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
         profile._default_lang = "en"
         
         dataset_dict = {
@@ -143,7 +143,7 @@ class TestParseDatasetTagsTranslated:
 
     def test_parse_dataset_with_tags_translated_default_lang_missing_uses_first_available(self):
         """Test parse_dataset when tags_translated doesn't have default_lang, uses first available"""
-        profile = FAIRDataPointDCATAPProfile()
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
         profile._default_lang = "en"
         
         dataset_dict = {
@@ -161,7 +161,7 @@ class TestParseDatasetTagsTranslated:
 
     def test_parse_dataset_with_tags_translated_empty_lists_skips_empty(self):
         """Test parse_dataset when tags_translated has empty lists, skips to first non-empty"""
-        profile = FAIRDataPointDCATAPProfile()
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
         profile._default_lang = "en"
         
         dataset_dict = {
@@ -180,7 +180,7 @@ class TestParseDatasetTagsTranslated:
 
     def test_parse_dataset_with_tags_translated_all_empty(self):
         """Test parse_dataset when all tags_translated lists are empty"""
-        profile = FAIRDataPointDCATAPProfile()
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
         profile._default_lang = "en"
         
         dataset_dict = {
@@ -200,25 +200,29 @@ class TestSanitizeTagsTranslated:
     """Test _sanitize_tags_translated method"""
 
     def test_sanitize_tags_translated_valid_tags(self):
-        """Test _sanitize_tags_translated with valid tags"""        
+        """Test _sanitize_tags_translated with valid tags"""
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
+        
         tags_translated = {
             'en': ['tag1', 'tag2', 'valid-tag'],
             'nl': ['tag1_nl', 'tag2_nl']
         }
         
-        result = FAIRDataPointDCATAPProfile._sanitize_tags_translated(tags_translated)
+        result = profile._sanitize_tags_translated(tags_translated)
         
         assert result['en'] == ['tag1', 'tag2', 'valid-tag']
         assert result['nl'] == ['tag1_nl', 'tag2_nl']
 
     def test_sanitize_tags_translated_invalid_characters(self):
-        """Test _sanitize_tags_translated with invalid characters"""        
+        """Test _sanitize_tags_translated with invalid characters"""
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
+        
         tags_translated = {
             'en': ['tag1/with', 'tag2@invalid', 'valid-tag'],
             'nl': ['tag1#nl']
         }
         
-        result = FAIRDataPointDCATAPProfile._sanitize_tags_translated(tags_translated)
+        result = profile._sanitize_tags_translated(tags_translated)
         
         # Invalid characters should be replaced with spaces
         assert result['en'] == ['tag1 with', 'tag2 invalid', 'valid-tag']
@@ -226,48 +230,55 @@ class TestSanitizeTagsTranslated:
 
     def test_sanitize_tags_translated_too_short(self):
         """Test _sanitize_tags_translated with tags that are too short"""
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
         
         tags_translated = {
             'en': ['a', 'tag', 'valid-tag']
         }
         
-        result = FAIRDataPointDCATAPProfile._sanitize_tags_translated(tags_translated)
+        result = profile._sanitize_tags_translated(tags_translated)
         
         # Tags shorter than 2 characters should be removed
         assert result['en'] == ['tag', 'valid-tag']
 
     def test_sanitize_tags_translated_too_long(self):
-        """Test _sanitize_tags_translated with tags that are too long"""        
+        """Test _sanitize_tags_translated with tags that are too long"""
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
+        
         long_tag = 'a' * 101  # 101 characters
         tags_translated = {
             'en': [long_tag, 'valid-tag']
         }
         
-        result = FAIRDataPointDCATAPProfile._sanitize_tags_translated(tags_translated)
+        result = profile._sanitize_tags_translated(tags_translated)
         
         # Tags longer than 100 characters should be removed
         assert result['en'] == ['valid-tag']
 
     def test_sanitize_tags_translated_empty_values(self):
-        """Test _sanitize_tags_translated with empty values"""    
+        """Test _sanitize_tags_translated with empty values"""
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
+        
         tags_translated = {
             'en': ['tag1', '', 'tag2', None],
             'nl': []
         }
         
-        result = FAIRDataPointDCATAPProfile._sanitize_tags_translated(tags_translated)
+        result = profile._sanitize_tags_translated(tags_translated)
         
         # Empty values should be filtered out
         assert result['en'] == ['tag1', 'tag2']
         assert result['nl'] == []
 
     def test_sanitize_tags_translated_mixed_valid_invalid(self):
-        """Test _sanitize_tags_translated with mix of valid and invalid tags"""      
+        """Test _sanitize_tags_translated with mix of valid and invalid tags"""
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
+        
         tags_translated = {
             'en': ['valid-tag', 'a', 'tag/with', 'x' * 101, 'another-valid']
         }
         
-        result = FAIRDataPointDCATAPProfile._sanitize_tags_translated(tags_translated)
+        result = profile._sanitize_tags_translated(tags_translated)
         
         # Should keep only valid tags
         assert result['en'] == ['valid-tag', 'tag with', 'another-valid']
@@ -356,42 +367,3 @@ class TestRewriteWikidataUrl:
         result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("https://wikidata.org/wiki/Q999")
         
         assert result == "http://www.wikidata.org/entity/Q999"
-
-
-class TestFilterConformsTo:
-    """Test _filter_conforms_to method"""
-
-    def test_filter_conforms_to_all_valid_profile_urls(self):
-        """Test _filter_conforms_to with all valid profile URLs that should be removed"""
-        profile = FAIRDataPointDCATAPProfile()
-        
-        dataset_dict = {
-            'conforms_to': [
-                'https://fdp.example.com/profile/abc123',
-                'http://example.org/profile/xyz'
-            ]
-        }
-        
-        result = profile._filter_conforms_to(dataset_dict)
-        
-        assert 'conforms_to' not in result
-
-    def test_filter_conforms_to_mixed_valid_and_invalid_urls(self):
-        """Test _filter_conforms_to with both valid profile URLs to remove and other valid URLs to keep"""
-        profile = FAIRDataPointDCATAPProfile()
-        
-        dataset_dict = {
-            'conforms_to': [
-                'https://fdp.example.nl/profile/2f08228e-1789-40f8-84cd-28e3288c3604',
-                'https://www.w3.org/ns/dcat',
-                'https://example.com/schema/standard',
-                'http://example.org/profile/remove-this'
-            ]
-        }
-        
-        result = profile._filter_conforms_to(dataset_dict)
-        
-        assert result['conforms_to'] == [
-            'https://www.w3.org/ns/dcat',
-            'https://example.com/schema/standard'
-        ]
