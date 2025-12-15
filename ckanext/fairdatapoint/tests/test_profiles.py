@@ -4,7 +4,6 @@
 
 import json
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from rdflib import Graph, URIRef
@@ -20,15 +19,31 @@ from ckanext.fairdatapoint.profiles import (
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
 
 
-@pytest.mark.parametrize("input_tags,expected_tags", [
-    ([{"name": "CNS/Brain"}], [{"name": "CNS Brain"}]),
-    ([{"name": "COVID-19"}, {"name": "3`-DNA"}], [{"name": "COVID-19"}, {"name": "3 -DNA"}]),
-    ([{"name": "something-1.1"}, {"name": "breast cancer"}], [{"name": "something-1.1"}, {"name": "breast cancer"}]),
-    ([{"name": "-"}], []),
-    ([{"name": "It is a ridiculously long (more 100 chars) text for a tag therefore it should be removed from the "
-               "result to prevent CKAN harvester from failing"}], []),
-    ([], [])
-])
+@pytest.mark.parametrize(
+    "input_tags,expected_tags",
+    [
+        ([{"name": "CNS/Brain"}], [{"name": "CNS Brain"}]),
+        (
+            [{"name": "COVID-19"}, {"name": "3`-DNA"}],
+            [{"name": "COVID-19"}, {"name": "3 -DNA"}],
+        ),
+        (
+            [{"name": "something-1.1"}, {"name": "breast cancer"}],
+            [{"name": "something-1.1"}, {"name": "breast cancer"}],
+        ),
+        ([{"name": "-"}], []),
+        (
+            [
+                {
+                    "name": "It is a ridiculously long (more 100 chars) text for a tag therefore it should be removed from the "
+                    "result to prevent CKAN harvester from failing"
+                }
+            ],
+            [],
+        ),
+        ([], []),
+    ],
+)
 def test_validate_tags(input_tags, expected_tags):
     actual_tags = validate_tags(input_tags)
     assert actual_tags == expected_tags
@@ -38,12 +53,18 @@ def test_validate_tags(input_tags, expected_tags):
 @pytest.mark.usefixtures("with_plugins")
 def test_parse_dataset():
     """Dataset with keywords which should be modified"""
-    fdp_record_to_package = FairDataPointRecordToPackageConverter(profile="fairdatapoint_dcat_ap")
-    data = Graph().parse(Path(TEST_DATA_DIRECTORY, "dataset_cbioportal.ttl")).serialize()
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(
+        profile="fairdatapoint_dcat_ap"
+    )
+    data = (
+        Graph().parse(Path(TEST_DATA_DIRECTORY, "dataset_cbioportal.ttl")).serialize()
+    )
     actual = fdp_record_to_package.record_to_package(
         guid="catalog=https://health-ri.sandbox.semlab-leiden.nl/catalog/5c85cb9f-be4a-406c-ab0a-287fa787caa0;"
-             "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d9956191-1aff-4181-ac8b-16b829135ed5",
-        record=data, series_mapping=None)
+        "dataset=https://health-ri.sandbox.semlab-leiden.nl/dataset/d9956191-1aff-4181-ac8b-16b829135ed5",
+        record=data,
+        series_mapping=None,
+    )
     extras_dict = {item["key"]: item["value"] for item in actual["extras"]}
 
     expected_resources = [
@@ -68,14 +89,22 @@ def test_parse_dataset():
     ]
 
     assert len(actual["resources"]) == len(expected_resources)
-    for actual_resource, expected_resource in zip(actual["resources"], expected_resources):
+    for actual_resource, expected_resource in zip(
+        actual["resources"], expected_resources
+    ):
         assert actual_resource["retention_period"] == []
         for field, value in expected_resource.items():
             assert actual_resource[field] == value
 
     assert actual["title"] == "[PUBLIC] Low-Grade Gliomas (UCSF, Science 2014)"
-    assert actual["notes"] == "Whole exome sequencing of 23 grade II glioma tumor/normal pairs."
-    assert actual["url"] == "https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014"
+    assert (
+        actual["notes"]
+        == "Whole exome sequencing of 23 grade II glioma tumor/normal pairs."
+    )
+    assert (
+        actual["url"]
+        == "https://cbioportal.health-ri.nl/study/summary?id=lgg_ucsf_2014"
+    )
     assert actual["tags"] == [
         {"name": "CNS Brain"},
         {"name": "Diffuse Glioma"},
@@ -123,78 +152,66 @@ class TestParseDatasetTagsTranslated:
         """Test parse_dataset when tags_translated has default_lang"""
         profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
         profile._default_lang = "en"
-        
+
         dataset_dict = {
-            'tags_translated': {
-                'en': ['tag1', 'tag2'],
-                'nl': ['tag1_nl', 'tag2_nl']
-            }
+            "tags_translated": {"en": ["tag1", "tag2"], "nl": ["tag1_nl", "tag2_nl"]}
         }
         dataset_ref = URIRef("http://example.com/dataset")
-        
-        result = profile.parse_dataset(dataset_dict, dataset_ref)
-        
-        # Verify tags_translated was sanitized
-        assert 'tags_translated' in result
-        assert result['tags_translated']['en'] == ['tag1', 'tag2']
-        
-        # Verify tags were set from default_lang
-        assert result['tags'] == [{'name': 'tag1'}, {'name': 'tag2'}]
 
-    def test_parse_dataset_with_tags_translated_default_lang_missing_uses_first_available(self):
+        result = profile.parse_dataset(dataset_dict, dataset_ref)
+
+        # Verify tags_translated was sanitized
+        assert "tags_translated" in result
+        assert result["tags_translated"]["en"] == ["tag1", "tag2"]
+
+        # Verify tags were set from default_lang
+        assert result["tags"] == [{"name": "tag1"}, {"name": "tag2"}]
+
+    def test_parse_dataset_with_tags_translated_default_lang_missing_uses_first_available(
+        self,
+    ):
         """Test parse_dataset when tags_translated doesn't have default_lang, uses first available"""
         profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
         profile._default_lang = "en"
-        
+
         dataset_dict = {
-            'tags_translated': {
-                'nl': ['tag1_nl', 'tag2_nl'],
-                'de': ['tag1_de']
-            }
+            "tags_translated": {"nl": ["tag1_nl", "tag2_nl"], "de": ["tag1_de"]}
         }
         dataset_ref = URIRef("http://example.com/dataset")
-        
+
         result = profile.parse_dataset(dataset_dict, dataset_ref)
-        
+
         # Verify tags were set from first available language (nl)
-        assert result['tags'] == [{'name': 'tag1_nl'}, {'name': 'tag2_nl'}]
+        assert result["tags"] == [{"name": "tag1_nl"}, {"name": "tag2_nl"}]
 
     def test_parse_dataset_with_tags_translated_empty_lists_skips_empty(self):
         """Test parse_dataset when tags_translated has empty lists, skips to first non-empty"""
         profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
         profile._default_lang = "en"
-        
+
         dataset_dict = {
-            'tags_translated': {
-                'en': [],
-                'nl': [],
-                'de': ['tag1_de', 'tag2_de']
-            }
+            "tags_translated": {"en": [], "nl": [], "de": ["tag1_de", "tag2_de"]}
         }
         dataset_ref = URIRef("http://example.com/dataset")
-        
+
         result = profile.parse_dataset(dataset_dict, dataset_ref)
-        
+
         # Verify tags were set from first non-empty language (de)
-        assert result['tags'] == [{'name': 'tag1_de'}, {'name': 'tag2_de'}]
+        assert result["tags"] == [{"name": "tag1_de"}, {"name": "tag2_de"}]
 
     def test_parse_dataset_with_tags_translated_all_empty(self):
         """Test parse_dataset when all tags_translated lists are empty"""
         profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
         profile._default_lang = "en"
-        
-        dataset_dict = {
-            'tags_translated': {
-                'en': [],
-                'nl': []
-            }
-        }
+
+        dataset_dict = {"tags_translated": {"en": [], "nl": []}}
         dataset_ref = URIRef("http://example.com/dataset")
-        
+
         result = profile.parse_dataset(dataset_dict, dataset_ref)
-        
+
         # Verify tags is empty list
-        assert result['tags'] == []
+        assert result["tags"] == []
+
 
 class TestSanitizeTagsTranslated:
     """Test _sanitize_tags_translated method"""
@@ -202,86 +219,79 @@ class TestSanitizeTagsTranslated:
     def test_sanitize_tags_translated_valid_tags(self):
         """Test _sanitize_tags_translated with valid tags"""
         profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-        
+
         tags_translated = {
-            'en': ['tag1', 'tag2', 'valid-tag'],
-            'nl': ['tag1_nl', 'tag2_nl']
+            "en": ["tag1", "tag2", "valid-tag"],
+            "nl": ["tag1_nl", "tag2_nl"],
         }
-        
+
         result = profile._sanitize_tags_translated(tags_translated)
-        
-        assert result['en'] == ['tag1', 'tag2', 'valid-tag']
-        assert result['nl'] == ['tag1_nl', 'tag2_nl']
+
+        assert result["en"] == ["tag1", "tag2", "valid-tag"]
+        assert result["nl"] == ["tag1_nl", "tag2_nl"]
 
     def test_sanitize_tags_translated_invalid_characters(self):
         """Test _sanitize_tags_translated with invalid characters"""
         profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-        
+
         tags_translated = {
-            'en': ['tag1/with', 'tag2@invalid', 'valid-tag'],
-            'nl': ['tag1#nl']
+            "en": ["tag1/with", "tag2@invalid", "valid-tag"],
+            "nl": ["tag1#nl"],
         }
-        
+
         result = profile._sanitize_tags_translated(tags_translated)
-        
+
         # Invalid characters should be replaced with spaces
-        assert result['en'] == ['tag1 with', 'tag2 invalid', 'valid-tag']
-        assert result['nl'] == ['tag1 nl']
+        assert result["en"] == ["tag1 with", "tag2 invalid", "valid-tag"]
+        assert result["nl"] == ["tag1 nl"]
 
     def test_sanitize_tags_translated_too_short(self):
         """Test _sanitize_tags_translated with tags that are too short"""
         profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-        
-        tags_translated = {
-            'en': ['a', 'tag', 'valid-tag']
-        }
-        
+
+        tags_translated = {"en": ["a", "tag", "valid-tag"]}
+
         result = profile._sanitize_tags_translated(tags_translated)
-        
+
         # Tags shorter than 2 characters should be removed
-        assert result['en'] == ['tag', 'valid-tag']
+        assert result["en"] == ["tag", "valid-tag"]
 
     def test_sanitize_tags_translated_too_long(self):
         """Test _sanitize_tags_translated with tags that are too long"""
         profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-        
-        long_tag = 'a' * 101  # 101 characters
-        tags_translated = {
-            'en': [long_tag, 'valid-tag']
-        }
-        
+
+        long_tag = "a" * 101  # 101 characters
+        tags_translated = {"en": [long_tag, "valid-tag"]}
+
         result = profile._sanitize_tags_translated(tags_translated)
-        
+
         # Tags longer than 100 characters should be removed
-        assert result['en'] == ['valid-tag']
+        assert result["en"] == ["valid-tag"]
 
     def test_sanitize_tags_translated_empty_values(self):
         """Test _sanitize_tags_translated with empty values"""
         profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-        
-        tags_translated = {
-            'en': ['tag1', '', 'tag2', None],
-            'nl': []
-        }
-        
+
+        tags_translated = {"en": ["tag1", "", "tag2", None], "nl": []}
+
         result = profile._sanitize_tags_translated(tags_translated)
-        
+
         # Empty values should be filtered out
-        assert result['en'] == ['tag1', 'tag2']
-        assert result['nl'] == []
+        assert result["en"] == ["tag1", "tag2"]
+        assert result["nl"] == []
 
     def test_sanitize_tags_translated_mixed_valid_invalid(self):
         """Test _sanitize_tags_translated with mix of valid and invalid tags"""
         profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-        
+
         tags_translated = {
-            'en': ['valid-tag', 'a', 'tag/with', 'x' * 101, 'another-valid']
+            "en": ["valid-tag", "a", "tag/with", "x" * 101, "another-valid"]
         }
-        
+
         result = profile._sanitize_tags_translated(tags_translated)
-        
+
         # Should keep only valid tags
-        assert result['en'] == ['valid-tag', 'tag with', 'another-valid']
+        assert result["en"] == ["valid-tag", "tag with", "another-valid"]
 
 
 class TestRewriteWikidataUrl:
@@ -289,54 +299,70 @@ class TestRewriteWikidataUrl:
 
     def test_rewrite_wikidata_url_valid_wikidata_org(self):
         """Test _rewrite_wikidata_url with valid wikidata.org URL"""
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("http://wikidata.org/wiki/Q123")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "http://wikidata.org/wiki/Q123"
+        )
+
         assert result == "http://www.wikidata.org/entity/Q123"
 
     def test_rewrite_wikidata_url_valid_www_wikidata_org(self):
         """Test _rewrite_wikidata_url with valid www.wikidata.org URL"""
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("https://www.wikidata.org/wiki/Q456")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "https://www.wikidata.org/wiki/Q456"
+        )
+
         assert result == "http://www.wikidata.org/entity/Q456"
 
     def test_rewrite_wikidata_url_valid_entity_id(self):
         """Test _rewrite_wikidata_url with valid entity ID starting with Q"""
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("http://www.wikidata.org/wiki/Q789")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "http://www.wikidata.org/wiki/Q789"
+        )
+
         assert result == "http://www.wikidata.org/entity/Q789"
 
     def test_rewrite_wikidata_url_valid_entity_id_letter_other_than_q(self):
         """Test _rewrite_wikidata_url with valid entity ID starting with other letter"""
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("http://www.wikidata.org/wiki/P123")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "http://www.wikidata.org/wiki/P123"
+        )
+
         assert result == "http://www.wikidata.org/entity/P123"
 
     def test_rewrite_wikidata_url_invalid_entity_id_format(self):
         """Test _rewrite_wikidata_url with invalid entity ID format"""
         # Entity ID that doesn't match [a-zA-Z]\d+ pattern
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("http://www.wikidata.org/wiki/Invalid123")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "http://www.wikidata.org/wiki/Invalid123"
+        )
+
         # Should return original URL since entity ID doesn't match pattern
         assert result == "http://www.wikidata.org/wiki/Invalid123"
 
     def test_rewrite_wikidata_url_non_wikidata_domain(self):
         """Test _rewrite_wikidata_url with non-wikidata domain"""
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("http://example.com/wiki/Q123")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "http://example.com/wiki/Q123"
+        )
+
         # Should return original URL
         assert result == "http://example.com/wiki/Q123"
 
     def test_rewrite_wikidata_url_no_wiki_path(self):
         """Test _rewrite_wikidata_url with wikidata domain but no /wiki/ path"""
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("http://www.wikidata.org/entity/Q123")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "http://www.wikidata.org/entity/Q123"
+        )
+
         # Should return original URL since path doesn't start with /wiki/
         assert result == "http://www.wikidata.org/entity/Q123"
 
     def test_rewrite_wikidata_url_non_http_scheme(self):
         """Test _rewrite_wikidata_url with non-http/https scheme"""
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("ftp://www.wikidata.org/wiki/Q123")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "ftp://www.wikidata.org/wiki/Q123"
+        )
+
         # Should return original URL since scheme doesn't start with "http"
         assert result == "ftp://www.wikidata.org/wiki/Q123"
 
@@ -344,26 +370,71 @@ class TestRewriteWikidataUrl:
         """Test _rewrite_wikidata_url with invalid URL that raises ValueError"""
         # URL that would cause ValueError in urlparse
         result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("not a valid url")
-        
+
         # Should return original string
         assert result == "not a valid url"
 
     def test_rewrite_wikidata_url_entity_id_with_numbers_only(self):
         """Test _rewrite_wikidata_url with entity ID that is numbers only (invalid)"""
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("http://www.wikidata.org/wiki/123")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "http://www.wikidata.org/wiki/123"
+        )
+
         # Should return original URL since entity ID doesn't start with a letter
         assert result == "http://www.wikidata.org/wiki/123"
 
     def test_rewrite_wikidata_url_entity_id_with_letters_only(self):
         """Test _rewrite_wikidata_url with entity ID that is letters only (invalid)"""
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("http://www.wikidata.org/wiki/ABC")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "http://www.wikidata.org/wiki/ABC"
+        )
+
         # Should return original URL since entity ID doesn't match pattern [a-zA-Z]\d+
         assert result == "http://www.wikidata.org/wiki/ABC"
 
     def test_rewrite_wikidata_url_https_scheme(self):
         """Test _rewrite_wikidata_url with https scheme"""
-        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url("https://wikidata.org/wiki/Q999")
-        
+        result = FAIRDataPointDCATAPProfile._rewrite_wikidata_url(
+            "https://wikidata.org/wiki/Q999"
+        )
+
         assert result == "http://www.wikidata.org/entity/Q999"
+
+
+class TestFilterConformsTo:
+    """Test _filter_conforms_to method"""
+
+    def test_filter_conforms_to_all_valid_profile_urls(self):
+        """Test _filter_conforms_to with all valid profile URLs that should be removed"""
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
+
+        dataset_dict = {
+            "conforms_to": [
+                "https://fdp.example.com/profile/abc123",
+                "http://example.org/profile/xyz",
+            ]
+        }
+
+        result = profile._filter_conforms_to(dataset_dict)
+
+        assert "conforms_to" not in result
+
+    def test_filter_conforms_to_mixed_valid_and_invalid_urls(self):
+        """Test _filter_conforms_to with both valid profile URLs to remove and other valid URLs to keep"""
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
+
+        dataset_dict = {
+            "conforms_to": [
+                "https://fdp.example.nl/profile/2f08228e-1789-40f8-84cd-28e3288c3604",
+                "https://www.w3.org/ns/dcat",
+                "https://example.com/schema/standard",
+                "http://example.org/profile/remove-this",
+            ]
+        }
+
+        result = profile._filter_conforms_to(dataset_dict)
+
+        assert result["conforms_to"] == [
+            "https://www.w3.org/ns/dcat",
+            "https://example.com/schema/standard",
+        ]
