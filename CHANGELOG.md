@@ -15,17 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [v1.6.5] - 2025-12-15
 
 ### Changed
-- added staticmethod by @Quinten in ecb0228
-- Revert "Remove unnecessary self parameter from static methods" by @Quinten in c48d7d4
-- Remove unnecessary self parameter from static methods by @Quinten in 676cfee
 - Refactor profile methods and expand test coverage by @Quinten in 16bf5a0
-- Revert "Refactor profile methods and add tests for conforms_to filtering" by @Quinten in 820d515
-- Refactor profile methods and add tests for conforms_to filtering by @Quinten in 6752215
 - Filter profile URIs from conforms_to field in datasets by @Quinten in b5458c4
-- chore(deps): update sonarsource/sonarqube-scan-action action to v7 by @Renovate Bot in a0ef2de
-- chore(deps): update dependency rdflib to ~=7.5.0 by @Renovate Bot in 3ca55b7
-- chore(deps): update actions/checkout action to v6 by @Renovate Bot in f2476c7
-- doc: update CHANGELOG.md for v1.6.4 by @LNDS-Sysadmins in 82e30f4
 
 
 ## [v1.6.4] - 2025-11-13
