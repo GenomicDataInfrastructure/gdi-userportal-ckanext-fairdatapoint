@@ -12,6 +12,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.6.5] - 2025-12-15
+
+### Changed
+- Refactor profile methods and expand test coverage by @Quinten in 16bf5a0
+- Filter profile URIs from conforms_to field in datasets by @Quinten in b5458c4
+
+
 ## [v1.6.4] - 2025-11-13
 
 ### Changed
