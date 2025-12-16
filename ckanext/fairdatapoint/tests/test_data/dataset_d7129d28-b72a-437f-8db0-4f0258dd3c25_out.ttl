@@ -21,7 +21,6 @@
 <https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25> a dcat:Dataset,
         dcat:Resource ;
     rdfs:label "Example" ;
-    dcterms:conformsTo <https://health-ri.sandbox.semlab-leiden.nl/profile/2f08228e-1789-40f8-84cd-28e3288c3604> ;
     dcterms:description "This is an example description." ;
     dcterms:isPartOf <https://health-ri.sandbox.semlab-leiden.nl/catalog/e3faf7ad-050c-475f-8ce4-da7e2faa5cd0> ;
     dcterms:language <http://id.loc.gov/vocabulary/iso639-1/en> ;
