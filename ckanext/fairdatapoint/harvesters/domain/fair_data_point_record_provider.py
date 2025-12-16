@@ -5,6 +5,7 @@
 
 
 import logging
+import re
 from typing import Dict, Iterable, Union
 from collections import deque
 
@@ -103,12 +104,13 @@ class FairDataPointRecordProvider:
         """
         Replaces contact point URI with a VCard
         """
-        g.remove((subject_uri, DCAT.contactPoint, contact_point_uri))
-        vcard_node = BNode()
-        g.add((subject_uri, DCAT.contactPoint, vcard_node))
-        g.add((vcard_node, RDF.type, VCARD.Kind))
-        g.add((vcard_node, VCARD.hasUID, contact_point_uri))
+
         if "orcid" in str(contact_point_uri):
+            g.remove((subject_uri, DCAT.contactPoint, contact_point_uri))
+            vcard_node = BNode()
+            g.add((subject_uri, DCAT.contactPoint, vcard_node))
+            g.add((vcard_node, RDF.type, VCARD.Kind))
+            g.add((vcard_node, VCARD.hasUID, contact_point_uri))
             try:
                 orcid_response = requests.get(
                     str(contact_point_uri).rstrip("/") + "/public-record.json"
@@ -156,3 +158,12 @@ class FairDataPointRecordProvider:
             if o == access_rights_default:
                 g.remove((subject_uri, DCTERMS.accessRights, o))
                 g.remove((access_rights_default, None, None))
+
+        triples_to_remove = []
+
+        for subject, obj in g.subject_objects(DCTERMS.conformsTo):
+            if isinstance(obj, URIRef) and bool(re.match(r"^https?://.*/profile/", str(obj), re.IGNORECASE)):
+                triples_to_remove.append((subject, obj))
+
+        for subject, obj in triples_to_remove:
+            g.remove((subject, DCTERMS.conformsTo, obj))

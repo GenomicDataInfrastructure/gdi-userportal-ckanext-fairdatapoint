@@ -79,8 +79,6 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
 
         dataset_dict = self._fix_wikidata_uris(dataset_dict, PACKAGE_REPLACE_FIELDS)
 
-        dataset_dict = self._filter_conforms_to(dataset_dict)
-
         resolve_labels(dataset_dict)
 
         return dataset_dict
@@ -157,52 +155,3 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
                     new_value = value
                 dataset_dict[field] = new_value
         return dataset_dict
-
-    def _filter_conforms_to(self, dataset_dict: Dict) -> Dict:
-        """
-        Filter conforms_to field by removing values that match the profile URI pattern.
-        """
-        conforms_to = dataset_dict.get("conforms_to")
-        if conforms_to:
-            filtered_values = []
-
-            # Handle both single string and list of strings
-            values_to_filter = (
-                conforms_to if isinstance(conforms_to, list) else [conforms_to]
-            )
-
-            for value in values_to_filter:
-                if isinstance(value, str):
-                    # Check if the value matches the pattern: http(s), optional fdp, and profile
-                    if not self._should_remove_conforms_to_value(value):
-                        filtered_values.append(value)
-                else:
-                    filtered_values.append(value)
-
-            # Update the dataset_dict with the filtered values
-            if filtered_values:
-                dataset_dict["conforms_to"] = (
-                    filtered_values
-                    if isinstance(conforms_to, list)
-                    else (filtered_values[0] if filtered_values else None)
-                )
-            else:
-                dataset_dict.pop("conforms_to", None)
-
-        return dataset_dict
-
-    @staticmethod
-    def _should_remove_conforms_to_value(value: str) -> bool:
-        """
-        Check if a conforms_to value should be removed using regex pattern matching.
-
-        Removes values that match the pattern:
-        - Start with http:// or https://
-        - Contain the word "profile"
-        """
-        # Pattern explanation:
-        # ^https?:\/\/ - starts with 'http://' or 'https://'
-        # .* - any characters in between
-        # \/profile\/ - '/profile/' somewhere in the URL
-        pattern = r"^https?:\/\/.*\/profile\/"
-        return bool(re.match(pattern, value, re.IGNORECASE))
