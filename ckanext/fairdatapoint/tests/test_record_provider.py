@@ -216,7 +216,7 @@ class TestRecordProvider:
         g.add((subject, DCTERMS.conformsTo, profile_uri))
         g.add((subject, DCTERMS.conformsTo, keep_uri))
 
-        self.fdp_record_provider._filter_conforms_to(g)
+        self.fdp_record_provider._remove_fdp_defaults(g, subject)
 
         assert (subject, DCTERMS.conformsTo, profile_uri) not in g
         assert (subject, DCTERMS.conformsTo, keep_uri) in g
@@ -234,6 +234,6 @@ class TestRecordProvider:
         for uri in profile_uris:
             g.add((subject, DCTERMS.conformsTo, uri))
 
-        self.fdp_record_provider._filter_conforms_to(g)
+        self.fdp_record_provider._remove_fdp_defaults(g, subject)
 
         assert list(g.objects(subject=subject, predicate=DCTERMS.conformsTo)) == []

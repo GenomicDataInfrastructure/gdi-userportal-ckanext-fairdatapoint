@@ -159,11 +159,6 @@ class FairDataPointRecordProvider:
                 g.remove((subject_uri, DCTERMS.accessRights, o))
                 g.remove((access_rights_default, None, None))
 
-        triples_to_remove = []
-
-        for subject, obj in g.subject_objects(DCTERMS.conformsTo):
-            if isinstance(obj, URIRef) and bool(re.match(r"^https?://.*/profile/", str(obj), re.IGNORECASE)):
-                triples_to_remove.append((subject, obj))
-
-        for subject, obj in triples_to_remove:
-            g.remove((subject, DCTERMS.conformsTo, obj))
+        for subject, obj in list(g.subject_objects(DCTERMS.conformsTo)):
+            if isinstance(obj, URIRef) and re.match(r"^https?://.*/profile/", str(obj), re.IGNORECASE):
+                g.remove((subject, DCTERMS.conformsTo, obj))
