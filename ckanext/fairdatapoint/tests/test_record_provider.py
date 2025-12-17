@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import requests_mock
 from pytest_mock import class_mocker, mocker
-from rdflib import Graph, URIRef
+from rdflib import DCTERMS, Graph, URIRef
 
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import (
     FairDataPointRecordProvider,
@@ -204,3 +204,36 @@ class TestRecordProvider:
             )
             assert mock.called
             assert actual == expected
+
+    def test_filter_conforms_to_removes_profile_links(self):
+        """Profile URIs are stripped while other conformsTo values remain."""
+
+        g = Graph()
+        subject = URIRef("http://example.org/dataset/1")
+        profile_uri = URIRef("https://fdp.example.com/profile/abc123")
+        keep_uri = URIRef("https://www.w3.org/ns/dcat")
+
+        g.add((subject, DCTERMS.conformsTo, profile_uri))
+        g.add((subject, DCTERMS.conformsTo, keep_uri))
+
+        self.fdp_record_provider._filter_conforms_to(g)
+
+        assert (subject, DCTERMS.conformsTo, profile_uri) not in g
+        assert (subject, DCTERMS.conformsTo, keep_uri) in g
+
+    def test_filter_conforms_to_removes_all_profile_only(self):
+        """All conformsTo triples are removed when every value is an FDP profile URI."""
+
+        g = Graph()
+        subject = URIRef("http://example.org/dataset/2")
+        profile_uris = [
+            URIRef("https://fdp.example.com/profile/abc123"),
+            URIRef("http://example.org/profile/xyz"),
+        ]
+
+        for uri in profile_uris:
+            g.add((subject, DCTERMS.conformsTo, uri))
+
+        self.fdp_record_provider._filter_conforms_to(g)
+
+        assert list(g.objects(subject=subject, predicate=DCTERMS.conformsTo)) == []
