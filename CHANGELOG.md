@@ -21,7 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove obsolete TestFilterConformsTo test class by @Quinten in 17ca482
 - Remove profile URI filtering from conforms_to field by @Quinten in 5c13c9d
 - Update CHANGELOG for version 1.6.5 by @Quinten in 7f467fd
-- doc: update CHANGELOG.md for v1.6.5 by @LNDS-Sysadmins in 8c2e79b
 
 
 ## [v1.6.5] - 2025-12-15
