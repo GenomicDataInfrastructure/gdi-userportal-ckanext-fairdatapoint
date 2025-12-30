@@ -12,6 +12,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.6.6] - 2025-12-17
+
+### Changed
+- Refactor conformsTo triple removal logic by @Quinten in 61c294d
+- Add tests for _filter_conforms_to method in record provider by @Quinten in d506058
+- Remove dcterms:conformsTo from test dataset TTL files by @Quinten in 1e5537d
+- Remove obsolete TestFilterConformsTo test class by @Quinten in 17ca482
+- Remove profile URI filtering from conforms_to field by @Quinten in 5c13c9d
+- Update CHANGELOG for version 1.6.5 by @Quinten in 7f467fd
+
+
 ## [v1.6.5] - 2025-12-15
 
 ### Changed
