@@ -44,8 +44,20 @@
 
 <https://health-ri.sandbox.semlab-leiden.nl/profile/2f08228e-1789-40f8-84cd-28e3288c3604> rdfs:label "Dataset Profile" .
 
-<https://health-ri.sandbox.semlab-leiden.nl/distribution/f9b9dff8-a039-4ca2-be9b-da72a61e3bac> dcterms:description "Example distribution description" ;
-     dcterms:format <http://example.com> ;
-     dcterms:license <http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0> ;
-     dcterms:title "Example distribution" ;
-     dcat:accessURL <http://example.com> .
+<https://health-ri.sandbox.semlab-leiden.nl/distribution/f9b9dff8-a039-4ca2-be9b-da72a61e3bac> a dcat:Distribution,
+        dcat:Resource ;
+    rdfs:label "Example distribution" ;
+    dcterms:accessRights <https://health-ri.sandbox.semlab-leiden.nl/distribution/f9b9dff8-a039-4ca2-be9b-da72a61e3bac#accessRights> ;
+    dcterms:conformsTo <https://health-ri.sandbox.semlab-leiden.nl/profile/02c649de-c579-43bb-b470-306abdc808c7> ;
+    dcterms:description "Example distribution description" ;
+    dcterms:format <http://example.com> ;
+    dcterms:isPartOf <https://health-ri.sandbox.semlab-leiden.nl/dataset/d7129d28-b72a-437f-8db0-4f0258dd3c25> ;
+    dcterms:language <http://id.loc.gov/vocabulary/iso639-1/en> ;
+    dcterms:license <http://rdflicense.appspot.com/rdflicense/cc-by-nc-nd3.0> ;
+    dcterms:title "Example distribution" ;
+    ns2:SIO_000628 <https://health-ri.sandbox.semlab-leiden.nl/distribution/f9b9dff8-a039-4ca2-be9b-da72a61e3bac/metrics/445c0a70d1e214e545b261559e2842f4>,
+        <https://health-ri.sandbox.semlab-leiden.nl/distribution/f9b9dff8-a039-4ca2-be9b-da72a61e3bac/metrics/5d27e854a9e78eb3f663331cd47cdc13> ;
+    dcat:accessURL <http://example.com> ;
+    ns1:metadataIdentifier <https://health-ri.sandbox.semlab-leiden.nl/distribution/f9b9dff8-a039-4ca2-be9b-da72a61e3bac#identifier> ;
+    ns1:metadataIssued "2023-09-05T12:03:28.782932+00:00"^^xsd:dateTime ;
+    ns1:metadataModified "2023-09-05T12:03:28.782932+00:00"^^xsd:dateTime .
