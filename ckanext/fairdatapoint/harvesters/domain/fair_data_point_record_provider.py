@@ -81,7 +81,7 @@ class FairDataPointRecordProvider:
         ):
             distribution_g = self.fair_data_point.get_graph(distribution_uri)
 
-            self._remove_fdp_defaults(g, distribution_uri)
+            self._remove_fdp_defaults(distribution_g, distribution_uri)
 
             for predicate in distribution_g.predicates(subject=distribution_uri):
                 for distr_attribute_value in self.get_values(
