@@ -14,11 +14,12 @@ log = logging.getLogger(__name__)
 
 
 class FairDataPointRecordToPackageConverter:
-
     def __init__(self, profile: str):
         self.profile = profile
 
-    def record_to_package(self, guid: str, record: str, series_mapping=None) -> Optional[Dict[str, Any]]:
+    def record_to_package(
+        self, guid: str, record: str, series_mapping=None
+    ) -> Optional[Dict[str, Any]]:
         parser = FairDataPointRDFParser(profiles=[self.profile])
 
         try:
@@ -39,6 +40,4 @@ class FairDataPointRecordToPackageConverter:
 
             return items[0]  # Assuming single item per record
         except RDFParserException as e:
-            raise Exception(
-                f"Error parsing the RDF content [{record}]: {e}"
-            ) from e
+            raise Exception(f"Error parsing the RDF content [{record}]: {e}") from e

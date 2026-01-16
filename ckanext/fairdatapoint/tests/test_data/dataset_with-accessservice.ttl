@@ -1,0 +1,25 @@
+# SPDX-FileCopyrightText: 2024 Stichting Health-RI
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix ldp: <http://www.w3.org/ns/ldp#> .
+@prefix ns1: <https://w3id.org/fdp/fdp-o#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://example.org/dataset/with-accessservice> a dcat:Dataset,
+        dcat:Resource ;
+    rdfs:label "Dataset with AccessService" ;
+    dcterms:conformsTo <https://fdp-example.com/profile/fake-identifier> ;
+    dcterms:accessRights <https://example.org/dataset/with-accessservice#accessRights> ;
+    dcterms:description "A dataset with a distribution that has an access service." ;
+    dcterms:isPartOf <https://example.org/catalog/test> ;
+    dcterms:language <http://id.loc.gov/vocabulary/iso639-1/en> ;
+    dcterms:title "Dataset with AccessService" ;
+    dcat:distribution <https://example.org/distribution/with-accessservice> ;
+    ns1:metadataIssued "2024-01-01T00:00:00.000000+00:00"^^xsd:dateTime ;
+    ns1:metadataModified "2024-01-01T00:00:00.000000+00:00"^^xsd:dateTime .
+    

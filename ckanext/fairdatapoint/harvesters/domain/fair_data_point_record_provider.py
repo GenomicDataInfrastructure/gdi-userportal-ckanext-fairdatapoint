@@ -15,7 +15,9 @@ from rdflib.term import Node
 from requests import HTTPError, JSONDecodeError
 
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point import FairDataPoint
-from ckanext.fairdatapoint.harvesters.domain.graph_to_fdp_record_mapper import GraphToFdpRecordMapper
+from ckanext.fairdatapoint.harvesters.domain.graph_to_fdp_record_mapper import (
+    GraphToFdpRecordMapper,
+)
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 
 LDP = Namespace("http://www.w3.org/ns/ldp#")
@@ -25,15 +27,20 @@ log = logging.getLogger(__name__)
 
 
 class FairDataPointRecordProvider:
-
     def __init__(self, fdp_end_point: str, harvest_catalogs: bool = False):
         self.fair_data_point = FairDataPoint(fdp_end_point)
         self.harvest_catalogs = harvest_catalogs
 
     def get_record_ids(self) -> Dict.keys:
-        log.debug("FAIR Data Point get_records from {}".format(self.fair_data_point.fdp_end_point))
+        log.debug(
+            "FAIR Data Point get_records from {}".format(
+                self.fair_data_point.fdp_end_point
+            )
+        )
         result = dict()
-        for fdp_record in self._breath_first_search_records(self.fair_data_point.fdp_end_point):
+        for fdp_record in self._breath_first_search_records(
+            self.fair_data_point.fdp_end_point
+        ):
             if self.harvest_catalogs and fdp_record.is_catalog():
                 identifier = Identifier("")
                 identifier.add("catalog", str(fdp_record.url))
@@ -74,19 +81,19 @@ class FairDataPointRecordProvider:
         ):
             distribution_g = self.fair_data_point.get_graph(distribution_uri)
 
-            self._remove_fdp_defaults(g, distribution_uri)
+            self._remove_fdp_defaults(distribution_g, distribution_uri)
 
-            for predicate in [
-                DCTERMS.description,
-                DCTERMS.format,
-                DCTERMS.license,
-                DCTERMS.title,
-                DCAT.accessURL,
-            ]:
+            for predicate in distribution_g.predicates(subject=distribution_uri):
                 for distr_attribute_value in self.get_values(
                     distribution_g, distribution_uri, predicate
                 ):
                     g.add((distribution_uri, predicate, distr_attribute_value))
+
+                    # If the predicate is accessService, loop through the access service and add its values
+                    if predicate == DCAT.accessService:
+                        self._copy_blank_node_recursively(
+                            distribution_g, g, distr_attribute_value
+                        )
 
         # Look-up contact information
         for contact_point_uri in self.get_values(g, subject_uri, DCAT.contactPoint):
@@ -101,10 +108,7 @@ class FairDataPointRecordProvider:
 
     @staticmethod
     def _parse_contact_point(g: Graph, subject_uri: URIRef, contact_point_uri: URIRef):
-        """
-        Replaces contact point URI with a VCard
-        """
-
+        """Replaces contact point URI with a VCard"""
         if "orcid" in str(contact_point_uri):
             g.remove((subject_uri, DCAT.contactPoint, contact_point_uri))
             vcard_node = BNode()
@@ -152,6 +156,25 @@ class FairDataPointRecordProvider:
                 queue.extend(record.children())
 
     @staticmethod
+    def _copy_blank_node_recursively(
+        source_graph: Graph, target_graph: Graph, node: Node
+    ):
+        """Iteratively copy all triples for a blank node and any nested blank nodes."""
+        queue = deque([node])
+        visited = set()
+
+        while queue:
+            current = queue.popleft()
+            if current in visited:
+                continue
+            visited.add(current)
+
+            for predicate, obj in source_graph.predicate_objects(subject=current):
+                target_graph.add((current, predicate, obj))
+                if isinstance(obj, BNode):
+                    queue.append(obj)
+
+    @staticmethod
     def _remove_fdp_defaults(g, subject_uri):
         for s, p, o in g.triples((subject_uri, DCTERMS.accessRights, None)):
             access_rights_default = URIRef(f"{subject_uri}#accessRights")
@@ -160,5 +183,7 @@ class FairDataPointRecordProvider:
                 g.remove((access_rights_default, None, None))
 
         for subject, obj in list(g.subject_objects(DCTERMS.conformsTo)):
-            if isinstance(obj, URIRef) and re.match(r"^https?://.*/profile/", str(obj), re.IGNORECASE):
+            if isinstance(obj, URIRef) and re.match(
+                r"^https?://.*/profile/", str(obj), re.IGNORECASE
+            ):
                 g.remove((subject, DCTERMS.conformsTo, obj))
