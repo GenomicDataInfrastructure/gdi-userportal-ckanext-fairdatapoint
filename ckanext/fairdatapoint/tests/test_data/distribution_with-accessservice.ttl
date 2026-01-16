@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: 2024 Stichting Health-RI
+#
+# SPDX-License-Identifier: AGPL-3.0-only
+
+@prefix dcat: <http://www.w3.org/ns/dcat#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix ldp: <http://www.w3.org/ns/ldp#> .
+@prefix ns1: <https://w3id.org/fdp/fdp-o#> .
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://example.org/distribution/with-accessservice> a dcat:Distribution,
+        dcat:Resource ;
+    dcterms:conformsTo <https://fdp-example.com/profile/fake-identifier> ;
+    dcterms:accessRights <https://example.org/distribution/with-accessservice#accessRights> ;
+    rdfs:label "Distribution with AccessService" ;
+    dcterms:description "A distribution with an embedded access service." ;
+    dcterms:title "Distribution with AccessService" ;
+    dcterms:format <http://example.com/format/csv> ;
+    dcat:accessURL <https://example.org/data/file.csv> ;
+    dcat:accessService [ a dcat:DataService ;
+        dcterms:title "Example Data Service" ;
+        dcterms:description "An example data service" ;
+        dcat:endpointURL <https://example.org/api/sparql> ;
+        foaf:name "Data Service Name"
+    ] ;
+    ns1:metadataIssued "2024-01-01T00:00:00.000000+00:00"^^xsd:dateTime ;
+    ns1:metadataModified "2024-01-01T00:00:00.000000+00:00"^^xsd:dateTime .

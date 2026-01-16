@@ -178,6 +178,28 @@ class TestRecordProvider:
         )
         assert actual == expected
 
+    def test_get_record_by_id_with_accessservice(self, mocker):
+        """A distribution with an embedded access service (blank node) should have its properties copied"""
+        fdp_get_graph = mocker.MagicMock(name="get_data")
+        mocker.patch(
+            "ckanext.fairdatapoint.harvesters.domain.fair_data_point.FairDataPoint.get_graph",
+            new=fdp_get_graph,
+        )
+        guid = "dataset=https://example.org/dataset/with-accessservice"
+        fdp_get_graph.side_effect = get_graph_by_id
+        actual = self.fdp_record_provider.get_record_by_id(guid)
+        expected = (
+            Graph()
+            .parse(
+                Path(
+                    TEST_DATA_DIRECTORY,
+                    "dataset-distribution_with_accessservice_out.ttl",
+                )
+            )
+            .serialize()
+        )
+        assert actual == expected
+
     def test_orcid_call(self, mocker):
         """if orcid url in contact point - add vcard full name"""
         with requests_mock.Mocker() as mock:
