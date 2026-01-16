@@ -91,30 +91,9 @@ class FairDataPointRecordProvider:
 
                     # If the predicate is accessService, loop through the access service and add its values
                     if predicate == DCAT.accessService:
-                        if isinstance(distr_attribute_value, URIRef):
-                            # Fetch access service from URI
-                            access_service_g = self.fair_data_point.get_graph(
-                                distr_attribute_value
-                            )
-                            for access_service_predicate in access_service_g.predicates(
-                                subject=distr_attribute_value
-                            ):
-                                for access_service_value in self.get_values(
-                                    access_service_g,
-                                    distr_attribute_value,
-                                    access_service_predicate,
-                                ):
-                                    g.add(
-                                        (
-                                            distr_attribute_value,
-                                            access_service_predicate,
-                                            access_service_value,
-                                        )
-                                    )
-                        else:
-                            self._copy_blank_node_recursively(
-                                distribution_g, g, distr_attribute_value
-                            )
+                        self._copy_blank_node_recursively(
+                            distribution_g, g, distr_attribute_value
+                        )
 
         # Look-up contact information
         for contact_point_uri in self.get_values(g, subject_uri, DCAT.contactPoint):
