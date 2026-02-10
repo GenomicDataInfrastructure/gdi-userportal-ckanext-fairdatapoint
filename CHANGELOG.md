@@ -12,6 +12,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.6.7] - 2026-01-16
+
+### Changed
+- Refactor accessService handling in record provider by @Quinten in 624e30a
+- Add tests for distributions with embedded access services by @Quinten in d8aee06
+- Update dataset_d7129d28-b72a-437f-8db0-4f0258dd3c25_out.ttl by @Quinten in 54d8259
+- Update fair_data_point_record_provider.py by @Quinten in dda50d1
+- Expand test dataset distribution RDF metadata by @Quinten in 3b46e00
+- Enhance FAIR Data Point record handling and blank node support by @Quinten in 9f370f6
+- Fix duplicate entry for CHANGELOG v1.6.5 by @Quinten in 5558eca
+- doc: update CHANGELOG.md for v1.6.6 by @LNDS-Sysadmins in 7464699
+
+
+### Fixed
+- fix test output distribution by @Quinten in ddc5479
+
+
 ## [v1.6.6] - 2025-12-17
 
 ### Changed
