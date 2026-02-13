@@ -140,21 +140,36 @@ class resolvable_label_resolver:
                     log.error("Response text: %s", response.text)
                     SKIP_URIS.append(str(uri))
             else:
-                self.label_graph.parse(uri)
-        # RDFlib can throw a LOT of exceptions and they are not all
+                try:
+                    response = requests.get(str(uri), timeout=10)
+                    response.raise_for_status()
+                    self.label_graph.parse(data=response.text)
+                    return self.label_graph
+                except Exception:
+                    pass  # Try next format
+                
+                try:
+                    response = requests.get(str(uri), timeout=10)
+                    response.raise_for_status()
+                    self.label_graph.parse(data=response.text, format="xml")
+                    return self.label_graph
+                except Exception:
+                    pass  # Try next format
+                
+                try:
+                    response = requests.get(str(uri), timeout=10)
+                    response.raise_for_status()
+                    self.label_graph.parse(data=response.text, format="turtle")
+                    return self.label_graph
+                except Exception as e:
+                    log.warning("Failed to fetch and parse URI %s with all formats: %s", uri, str(e))
+                    SKIP_URIS.append(str(uri))
         except Exception as e:
-            # Check if it's a 404 error. If so, skip retrying
             if "404" in str(e) or "Not Found" in str(e):
                 log.warning("URI %s returned 404 Not Found. Adding to skip list.", uri)
-                SKIP_URIS.append(str(uri))
             else:
-                try:
-                    self.label_graph.parse(uri, format="xml")
-                except Exception:
-                    try:
-                        self.label_graph.parse(uri, format="turtle")
-                    except Exception as e:
-                        SKIP_URIS.append(str(uri))
+                log.warning("Error loading graph from %s: %s", uri, str(e))
+            SKIP_URIS.append(str(uri))
 
         return self.label_graph
 

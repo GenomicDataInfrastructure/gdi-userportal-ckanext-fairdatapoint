@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 
 PACKAGE_REPLACE_FIELDS = [
     "access_rights",
-    "applicable_legislation", #new
+    "applicable_legislation", 
     "code_values",
     "coding_system",
     "conforms_to",
@@ -29,35 +29,38 @@ PACKAGE_REPLACE_FIELDS = [
     "personal_data",
     "publisher_type",
     "purpose",
-    "qualified_attribution", #new (role in nested)
-    "qualified_relation", #new (role in nested)
-    "quality_annotation",#new (motivated_by in nested (of body of target toch))
-    "spatial_coverage", #new (was spatial_uri)
-    "status", #new
+    "qualified_attribution",
+    "qualified_relation",
+    "quality_annotation",
+    "spatial_coverage",
+    "status",
     "theme",
-    "type", #new
+    "type",
 ]
 RESOURCE_REPLACE_FIELDS = [
     "access_rights",
-    "applicable_legislation", #new
+    "applicable_legislation", 
+    "compress_format",
     "conforms_to",
     "format",
-    "hash_algorithm", #new
+    "hash_algorithm",
     "language",
-    "license", #new
+    "license",
+    "mimetype",
+    "package_format",
     "status",
 ]
 ACCESS_SERVICES_REPLACE_FIELDS = [
     "access_rights",
-    "applicable_legislation", #new
+    "applicable_legislation", 
     "conforms_to",
-    "creator", #new
+    "creator", 
     "format",
-    "hvd_category", #new
+    "hvd_category", 
     "language",
-    "license", #new
-    "publisher", #new
-    "theme", #new
+    "license", 
+    "publisher", 
+    "theme", 
 ]
 
 # Languages to resolve labels in

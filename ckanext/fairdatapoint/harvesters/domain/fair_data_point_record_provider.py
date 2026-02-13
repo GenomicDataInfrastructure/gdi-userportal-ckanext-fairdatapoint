@@ -117,7 +117,8 @@ class FairDataPointRecordProvider:
             g.add((vcard_node, VCARD.hasUID, contact_point_uri))
             try:
                 orcid_response = requests.get(
-                    str(contact_point_uri).rstrip("/") + "/public-record.json"
+                    str(contact_point_uri).rstrip("/") + "/public-record.json",
+                    timeout=10
                 )
                 json_orcid_response = orcid_response.json()
                 name = json_orcid_response["displayName"]
