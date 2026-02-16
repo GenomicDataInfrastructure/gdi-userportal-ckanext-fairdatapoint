@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 DEFAULT_LABEL_LANG = "en"
 LANG_LIST = ["en", "nl"]
 SKIP_URIS = []
+REQUEST_TIMEOUT = 100  # seconds
 
 
 class resolvable_label_resolver:
@@ -131,7 +132,7 @@ class resolvable_label_resolver:
                     "Accept": "application/json",  # request JSON-LD
                     "Authorization": f"apikey token={api_key}"
                 }
-                response = requests.get(url, headers=headers, timeout=10)
+                response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
 
                 if response.status_code == 200:
                     self.label_graph.parse(data=response.text, format="json-ld")
@@ -140,21 +141,33 @@ class resolvable_label_resolver:
                     log.error("Response text: %s", response.text)
                     SKIP_URIS.append(str(uri))
             else:
-                self.label_graph.parse(uri)
-        # RDFlib can throw a LOT of exceptions and they are not all
+                try:
+                    response = requests.get(str(uri), timeout=REQUEST_TIMEOUT)
+                    response.raise_for_status()
+                    
+                    # Try parsing with different formats
+                    for format in [None, "xml", "turtle"]:
+                        try:
+                            if format:
+                                self.label_graph.parse(data=response.text, format=format)
+                            else:
+                                self.label_graph.parse(data=response.text)
+                            return self.label_graph
+                        except Exception:
+                            continue
+                    
+                    # If all formats failed
+                    log.warning("Failed to parse URI %s with all formats", uri)
+                    SKIP_URIS.append(str(uri))
+                except Exception as e:
+                    log.warning("Error fetching URI %s: %s", uri, str(e))
+                    SKIP_URIS.append(str(uri))
         except Exception as e:
-            # Check if it's a 404 error. If so, skip retrying
             if "404" in str(e) or "Not Found" in str(e):
                 log.warning("URI %s returned 404 Not Found. Adding to skip list.", uri)
-                SKIP_URIS.append(str(uri))
             else:
-                try:
-                    self.label_graph.parse(uri, format="xml")
-                except Exception:
-                    try:
-                        self.label_graph.parse(uri, format="turtle")
-                    except Exception as e:
-                        SKIP_URIS.append(str(uri))
+                log.warning("Error loading graph from %s: %s", uri, str(e))
+            SKIP_URIS.append(str(uri))
 
         return self.label_graph
 

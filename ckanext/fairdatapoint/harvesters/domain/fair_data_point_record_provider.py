@@ -22,6 +22,7 @@ from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 
 LDP = Namespace("http://www.w3.org/ns/ldp#")
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
+REQUEST_TIMEOUT = 100 # seconds
 
 log = logging.getLogger(__name__)
 
@@ -117,7 +118,8 @@ class FairDataPointRecordProvider:
             g.add((vcard_node, VCARD.hasUID, contact_point_uri))
             try:
                 orcid_response = requests.get(
-                    str(contact_point_uri).rstrip("/") + "/public-record.json"
+                    str(contact_point_uri).rstrip("/") + "/public-record.json",
+                    timeout=REQUEST_TIMEOUT,
                 )
                 json_orcid_response = orcid_response.json()
                 name = json_orcid_response["displayName"]
