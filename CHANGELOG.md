@@ -12,6 +12,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.6.8] - 2026-02-16
+
+### Changed
+- Update fair_data_point.py by @Quinten in de7ad79
+- Introduce REQUEST_TIMEOUT and use for HTTP calls by @Quinten in 602ff0d
+- Add request timeouts and robust RDF parsing by @Quinten in 5b2e49c
+- chore(deps): update dependency rdflib to ~=7.6.0 by @Renovate Bot in d51a234
+- chore(deps): update dependency setuptools to ~=80.10.2 by @Renovate Bot in 83acc52
+- doc: update CHANGELOG.md for v1.6.7 by @LNDS-Sysadmins in 0c7b595
+
+
+### Fixed
+- Add tests for resolver graph loading/parsing by @Quinten in d1ca518
+- Update resolver.py by @Quinten in 06f8dbc
+
+
 ## [v1.6.7] - 2026-01-16
 
 ### Changed
