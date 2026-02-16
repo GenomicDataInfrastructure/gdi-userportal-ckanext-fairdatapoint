@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 DEFAULT_LABEL_LANG = "en"
 LANG_LIST = ["en", "nl"]
 SKIP_URIS = []
+REQUEST_TIMEOUT = 100  # seconds
 
 
 class resolvable_label_resolver:
@@ -131,7 +132,7 @@ class resolvable_label_resolver:
                     "Accept": "application/json",  # request JSON-LD
                     "Authorization": f"apikey token={api_key}"
                 }
-                response = requests.get(url, headers=headers, timeout=10)
+                response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
 
                 if response.status_code == 200:
                     self.label_graph.parse(data=response.text, format="json-ld")
@@ -141,7 +142,7 @@ class resolvable_label_resolver:
                     SKIP_URIS.append(str(uri))
             else:
                 try:
-                    response = requests.get(str(uri), timeout=10)
+                    response = requests.get(str(uri), timeout=REQUEST_TIMEOUT)
                     response.raise_for_status()
                     
                     # Try parsing with different formats
