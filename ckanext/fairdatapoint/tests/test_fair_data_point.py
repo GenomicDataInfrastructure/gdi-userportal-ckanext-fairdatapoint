@@ -66,3 +66,23 @@ class TestFairDataPoint:
         actual = fdp.get_graph("some_path")
         assert fdp_get_data.call_count == 1
         assert to_isomorphic(actual) == to_isomorphic(Graph())
+
+    def test_fdp_get_data_uses_request_timeout(self, mocker):
+        response = mocker.MagicMock()
+        response.text = TEST_DATA
+        response.raise_for_status.return_value = None
+        request_mock = mocker.patch(
+            "ckanext.fairdatapoint.harvesters.domain.fair_data_point.requests.request",
+            return_value=response,
+        )
+
+        fdp = FairDataPoint("some endpoint", request_timeout=42)
+        actual = fdp._get_data("https://fdp.example.com")
+
+        request_mock.assert_called_once_with(
+            "GET",
+            "https://fdp.example.com",
+            headers={"Accept": "text/turtle"},
+            timeout=42,
+        )
+        assert actual == TEST_DATA

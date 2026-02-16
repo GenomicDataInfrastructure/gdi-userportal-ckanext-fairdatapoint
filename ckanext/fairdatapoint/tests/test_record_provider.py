@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import requests_mock
 from pytest_mock import class_mocker, mocker
-from rdflib import DCTERMS, Graph, URIRef
+from rdflib import DCAT, DCTERMS, Graph, URIRef
 
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import (
     FairDataPointRecordProvider,
@@ -226,6 +226,29 @@ class TestRecordProvider:
             )
             assert mock.called
             assert actual == expected
+
+    def test_parse_contact_point_uses_request_timeout(self, mocker):
+        g = Graph()
+        subject = URIRef("http://example.org/dataset/1")
+        contact_point = URIRef("https://orcid.org/0000-0002-4348-707X")
+        g.add((subject, DCAT.contactPoint, contact_point))
+
+        response = mocker.MagicMock()
+        response.json.return_value = {"displayName": "N.K. De Vries"}
+        orcid_get = mocker.patch(
+            "ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider.requests.get",
+            return_value=response,
+        )
+
+        provider = FairDataPointRecordProvider(
+            "http://test_end_point.com", request_timeout=99
+        )
+        provider._parse_contact_point(g, subject, contact_point)
+
+        orcid_get.assert_called_once_with(
+            "https://orcid.org/0000-0002-4348-707X/public-record.json",
+            timeout=99,
+        )
 
     def test_filter_conforms_to_removes_profile_links(self):
         """Profile URIs are stripped while other conformsTo values remain."""
