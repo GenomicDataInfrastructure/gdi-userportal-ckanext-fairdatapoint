@@ -32,6 +32,17 @@ def get_harvester_setting(harvest_config_dict: dict, config_name: str, default_v
     return harvester_setting
 
 
+def get_harvester_int_setting(harvest_config_dict: dict, config_name: str, default_value: int) -> int:
+    """Query an integer harvester setting with per-harvester override first."""
+    if config_name in harvest_config_dict:
+        raw_value = harvest_config_dict[config_name]
+    else:
+        raw_value = toolkit.config.get(
+            f"ckanext.fairdatapoint.{config_name}", default_value
+        )
+    return toolkit.asint(raw_value)
+
+
 def get_bioportal_api_key() -> Optional[str]:
     """Return the BioPortal API key configured for the FAIR Data Point extension.
  

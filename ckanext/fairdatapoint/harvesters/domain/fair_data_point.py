@@ -18,8 +18,9 @@ REQUEST_TIMEOUT = 100 # seconds
 class FairDataPoint:
     """Class to connect and get data from FDP"""
 
-    def __init__(self, fdp_end_point: str):
+    def __init__(self, fdp_end_point: str, request_timeout: int = REQUEST_TIMEOUT):
         self.fdp_end_point = fdp_end_point
+        self.request_timeout = request_timeout
 
     def get_graph(self, path: Union[str, URIRef]) -> Graph:
         """
@@ -41,11 +42,12 @@ class FairDataPoint:
                 log.error(f"Record {data} could not be parsed: {e}")
         return graph
 
-    @staticmethod
-    def _get_data(path: Union[str, URIRef]) -> Union[str, None]:
+    def _get_data(self, path: Union[str, URIRef]) -> Union[str, None]:
         headers = {"Accept": "text/turtle"}
         try:
-            response = requests.request("GET", path, headers=headers, timeout=REQUEST_TIMEOUT)
+            response = requests.request(
+                "GET", path, headers=headers, timeout=self.request_timeout
+            )
             response.encoding = encodings.utf_8.getregentry().name
             response.raise_for_status()
             return response.text

@@ -4,10 +4,11 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import logging
 
-from ckan.plugins import toolkit
-
 from ckanext.fairdatapoint.harvesters.civity_harvester import CivityHarvester
-from ckanext.fairdatapoint.harvesters.config import get_harvester_setting
+from ckanext.fairdatapoint.harvesters.config import (
+    get_harvester_int_setting,
+    get_harvester_setting,
+)
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import (
     FairDataPointRecordProvider,
 )
@@ -17,6 +18,8 @@ from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_c
 
 PROFILE = "profile"
 HARVEST_CATALOG = "harvest_catalogs"
+REQUEST_TIMEOUT = "request_timeout"
+DEFAULT_REQUEST_TIMEOUT = 100
 
 # HARVEST_CATALOG_CONFIG = "ckanext.fairdatapoint.harvest_catalogs"
 
@@ -29,9 +32,14 @@ class FairDataPointCivityHarvester(CivityHarvester):
         harvest_catalogs = get_harvester_setting(
             harvest_config_dict, HARVEST_CATALOG, False
         )
+        request_timeout = get_harvester_int_setting(
+            harvest_config_dict, REQUEST_TIMEOUT, DEFAULT_REQUEST_TIMEOUT
+        )
 
         self.record_provider = FairDataPointRecordProvider(
-            harvest_url, harvest_catalogs
+            harvest_url,
+            harvest_catalogs,
+            request_timeout=request_timeout,
         )
 
     def setup_record_to_package_converter(self, harvest_url, harvest_config_dict):
