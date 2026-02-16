@@ -211,3 +211,163 @@ class TestGenericResolverClass:
 
         assert ckan_translation_list == reference_translation_list
 
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_graph_empty_graph_resets_label_graph(self, mock_requests_get):
+        """Test that empty_graph clears the existing graph (line 110)."""
+        resolver = resolvable_label_resolver()
+
+        # Ensure instance attribute exists and seed graph with data
+        resolver.label_graph = Graph()
+        resolver.label_graph.parse(
+            data="""
+                @prefix ex: <http://example.com/> .
+                ex:thing a ex:Type .
+            """,
+            format="turtle",
+        )
+
+        test_uri = "http://example.com/graph"
+        mock_requests_get.side_effect = Exception("boom")
+
+        result_graph = resolver.load_graph(test_uri, empty_graph=True)
+
+        assert result_graph is resolver.label_graph
+        assert len(result_graph) == 0
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_and_translate_europa_vocabulary(self, mock_requests_get):
+        """Test complete end-to-end flow with Europa Publications Office vocabulary URI"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+        
+        resolver = resolvable_label_resolver()
+        
+        # Mock response with RDF/XML data for Dutch language
+        mock_response = MagicMock()
+        mock_response.text = """<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:skos="http://www.w3.org/2004/02/skos/core#">
+    <rdf:Description rdf:about="http://publications.europa.eu/resource/authority/language/NLD">
+        <skos:prefLabel xml:lang="nl">Nederlands</skos:prefLabel>
+        <skos:prefLabel xml:lang="en">Dutch</skos:prefLabel>
+    </rdf:Description>
+</rdf:RDF>"""
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+        
+        test_uri = "http://publications.europa.eu/resource/authority/language/NLD"
+        
+        # Call the complete flow
+        ckan_translation_list = resolver.load_and_translate_uri(test_uri)
+        
+        # Verify the request was made
+        assert mock_requests_get.call_count >= 1
+        
+        # Sort for consistent comparison
+        ckan_translation_list = sorted(
+            ckan_translation_list, key=lambda x: x["lang_code"]
+        )
+        
+        # Verify the expected translations
+        reference_translation_list = [
+            {
+                "term": "http://publications.europa.eu/resource/authority/language/NLD",
+                "term_translation": "Dutch",
+                "lang_code": "en",
+            },
+            {
+                "term": "http://publications.europa.eu/resource/authority/language/NLD",
+                "term_translation": "Nederlands",
+                "lang_code": "nl",
+            },
+        ]
+        
+        assert ckan_translation_list == reference_translation_list
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_graph_with_xml_format(self, mock_requests_get):
+        """Test loading graph with XML format data"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+        
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph()
+        
+        # Mock response with RDF/XML data
+        mock_response = MagicMock()
+        mock_response.text = """<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:skos="http://www.w3.org/2004/02/skos/core#">
+    <rdf:Description rdf:about="http://publications.europa.eu/resource/authority/language/NLD">
+        <skos:prefLabel xml:lang="nl">Nederlands</skos:prefLabel>
+        <skos:prefLabel xml:lang="en">Dutch</skos:prefLabel>
+    </rdf:Description>
+</rdf:RDF>"""
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+        
+        test_uri = "http://publications.europa.eu/resource/authority/language/NLD"
+        result_graph = resolver.load_graph(test_uri)
+        
+        # Verify the request was made
+        assert mock_requests_get.call_count >= 1
+        # Check that the graph contains data
+        assert len(result_graph) > 0
+        # Verify we can extract the labels
+        label_dict = resolver.literal_dict_from_graph(test_uri)
+        assert label_dict.get("nl") == "Nederlands"
+        assert label_dict.get("en") == "Dutch"
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_graph_with_turtle_format(self, mock_requests_get):
+        """Test loading graph with Turtle format data"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+        
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph()
+        
+        # Mock response with Turtle data
+        mock_response = MagicMock()
+        mock_response.text = """@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<http://publications.europa.eu/resource/authority/language/NLD>
+    skos:prefLabel "Nederlands"@nl, "Dutch"@en ."""
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+        
+        test_uri = "http://publications.europa.eu/resource/authority/language/NLD"
+        result_graph = resolver.load_graph(test_uri)
+        
+        # Verify the request was made
+        assert mock_requests_get.call_count >= 1
+        # Check that the graph contains data
+        assert len(result_graph) > 0
+        # Verify we can extract the labels
+        label_dict = resolver.literal_dict_from_graph(test_uri)
+        assert label_dict.get("nl") == "Nederlands"
+        assert label_dict.get("en") == "Dutch"
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_graph_with_invalid_data(self, mock_requests_get):
+        """Test that invalid data adds URI to SKIP_URIS"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+        
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph()
+        
+        # Mock response with invalid RDF data
+        mock_response = MagicMock()
+        mock_response.text = "This is not valid RDF data in any format"
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+        
+        test_uri = "http://example.com/invalid"
+        result_graph = resolver.load_graph(test_uri)
+        
+        # Verify the request was made
+        assert mock_requests_get.call_count >= 1
+        # Verify URI was added to skip list after parsing failures
+        assert test_uri in SKIP_URIS
+
