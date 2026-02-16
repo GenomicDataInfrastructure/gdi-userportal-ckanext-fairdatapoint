@@ -13,7 +13,7 @@ from rdflib.exceptions import ParserError
 from requests.exceptions import ConnectionError, HTTPError, RequestException, Timeout
 
 log = logging.getLogger(__name__)
-
+REQUEST_TIMEOUT = 100 # seconds
 
 class FairDataPoint:
     """Class to connect and get data from FDP"""
@@ -45,7 +45,7 @@ class FairDataPoint:
     def _get_data(path: Union[str, URIRef]) -> Union[str, None]:
         headers = {"Accept": "text/turtle"}
         try:
-            response = requests.request("GET", path, headers=headers, timeout=30)
+            response = requests.request("GET", path, headers=headers, timeout=REQUEST_TIMEOUT)
             response.encoding = encodings.utf_8.getregentry().name
             response.raise_for_status()
             return response.text
