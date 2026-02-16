@@ -26,9 +26,17 @@ log = logging.getLogger(__name__)
 
 class FairDataPointRecordProvider:
 
-    def __init__(self, fdp_end_point: str, harvest_catalogs: bool = False):
-        self.fair_data_point = FairDataPoint(fdp_end_point)
+    def __init__(
+        self,
+        fdp_end_point: str,
+        harvest_catalogs: bool = False,
+        request_timeout: int = 10,
+    ):
+        self.fair_data_point = FairDataPoint(
+            fdp_end_point, request_timeout=request_timeout
+        )
         self.harvest_catalogs = harvest_catalogs
+        self.request_timeout = request_timeout
 
     def get_record_ids(self) -> Dict.keys:
         log.debug("FAIR Data Point get_records from {}".format(self.fair_data_point.fdp_end_point))
@@ -99,8 +107,9 @@ class FairDataPointRecordProvider:
 
         return result
 
-    @staticmethod
-    def _parse_contact_point(g: Graph, subject_uri: URIRef, contact_point_uri: URIRef):
+    def _parse_contact_point(
+        self, g: Graph, subject_uri: URIRef, contact_point_uri: URIRef
+    ):
         """
         Replaces contact point URI with a VCard
         """
@@ -113,7 +122,8 @@ class FairDataPointRecordProvider:
             g.add((vcard_node, VCARD.hasUID, contact_point_uri))
             try:
                 orcid_response = requests.get(
-                    str(contact_point_uri).rstrip("/") + "/public-record.json"
+                    str(contact_point_uri).rstrip("/") + "/public-record.json",
+                    timeout=self.request_timeout,
                 )
                 json_orcid_response = orcid_response.json()
                 name = json_orcid_response["displayName"]

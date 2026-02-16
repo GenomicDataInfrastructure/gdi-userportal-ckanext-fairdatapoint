@@ -90,6 +90,14 @@ CKAN will harvest catalogs as datasets.
 The setting can be overriden in the harvester profile, by setting `"harvest_catalogs": "true"` or
 `"harvest_catalogs": "false"` in the harvester configuration JSON.
 
+### Request timeout
+
+The FDP harvester supports a per-request timeout in seconds via
+`ckanext.fairdatapoint.request_timeout`. Default is `10`.
+
+The setting can be overridden per harvester source by adding
+`"request_timeout": "30"` (or another integer value in seconds) in the harvester configuration JSON.
+
 ### Label resolving
 
 The harvester supports the resolving of labels for fields defined as a (resolvable) URI. Examples of
