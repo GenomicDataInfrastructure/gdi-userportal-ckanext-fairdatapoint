@@ -143,26 +143,23 @@ class resolvable_label_resolver:
                 try:
                     response = requests.get(str(uri), timeout=10)
                     response.raise_for_status()
-                    self.label_graph.parse(data=response.text)
-                    return self.label_graph
-                except Exception:
-                    pass  # Try next format
-                
-                try:
-                    response = requests.get(str(uri), timeout=10)
-                    response.raise_for_status()
-                    self.label_graph.parse(data=response.text, format="xml")
-                    return self.label_graph
-                except Exception:
-                    pass  # Try next format
-                
-                try:
-                    response = requests.get(str(uri), timeout=10)
-                    response.raise_for_status()
-                    self.label_graph.parse(data=response.text, format="turtle")
-                    return self.label_graph
+                    
+                    # Try parsing with different formats
+                    for format in [None, "xml", "turtle"]:
+                        try:
+                            if format:
+                                self.label_graph.parse(data=response.text, format=format)
+                            else:
+                                self.label_graph.parse(data=response.text)
+                            return self.label_graph
+                        except Exception:
+                            continue
+                    
+                    # If all formats failed
+                    log.warning("Failed to parse URI %s with all formats", uri)
+                    SKIP_URIS.append(str(uri))
                 except Exception as e:
-                    log.warning("Failed to fetch and parse URI %s with all formats: %s", uri, str(e))
+                    log.warning("Error fetching URI %s: %s", uri, str(e))
                     SKIP_URIS.append(str(uri))
         except Exception as e:
             if "404" in str(e) or "Not Found" in str(e):
