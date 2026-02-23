@@ -8,6 +8,7 @@ import logging
 from rdflib import RDFS, SDO, SKOS, Graph, URIRef
 import re
 import requests
+from urllib.parse import urlparse
 from ckanext.fairdatapoint.harvesters.config import get_bioportal_api_key
 
 log = logging.getLogger(__name__)
@@ -92,8 +93,126 @@ class resolvable_label_resolver:
 
         return lang_dict
 
+    def _load_wikidata_graph(self, uri: str) -> bool:
+        """Load RDF from Wikidata using Special:EntityData endpoint.
+
+        Parameters
+        ----------
+        uri : str
+            Wikidata URI (either /entity/ or /wiki/ format)
+
+        Returns
+        -------
+        bool
+            True if successful, False otherwise
+        """
+        parsed_uri = urlparse(uri)
+        entity_id = None
+
+        if parsed_uri.path.startswith("/entity/"):
+            entity_id = parsed_uri.path.split("/entity/")[-1]
+        elif parsed_uri.path.startswith("/wiki/"):
+            entity_id = parsed_uri.path.split("/wiki/")[-1]
+
+        if not entity_id:
+            return False
+
+        try:
+            wikidata_url = (
+                f"https://www.wikidata.org/wiki/Special:EntityData/{entity_id}.ttl"
+            )
+            headers = {
+                "Accept": "text/turtle",
+                "User-Agent": "ckanext-fairdatapoint/harvester",
+            }
+            response = requests.get(
+                wikidata_url, headers=headers, timeout=REQUEST_TIMEOUT
+            )
+            response.raise_for_status()
+            self.label_graph.parse(data=response.text, format="turtle")
+            return True
+        except Exception as e:
+            log.warning("Error loading Wikidata URI %s: %s", uri, str(e))
+            return False
+
+    def _load_bioontology_graph(self, uri: str) -> bool:
+        """Load RDF from BioOntology API using JSON-LD format.
+
+        Parameters
+        ----------
+        uri : str
+            BioOntology concept URI
+
+        Returns
+        -------
+        bool
+            True if successful, False otherwise
+        """
+        try:
+            ontology = uri.split("/ontology/")[1].split("/")[0]
+            encoded_concept = requests.utils.quote(uri, safe='')
+            url = f"https://data.bioontology.org/ontologies/{ontology}/classes/{encoded_concept}"
+            api_key = get_bioportal_api_key()
+
+            if not api_key:
+                log.error("BioPortal API key is not configured. Cannot fetch data from BioOntology.")
+                return False
+
+            headers = {
+                "Accept": "application/json",
+                "Authorization": f"apikey token={api_key}"
+            }
+            response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
+
+            if response.status_code == 200:
+                self.label_graph.parse(data=response.text, format="json-ld")
+                return True
+            else:
+                log.error("Failed to fetch BioOntology data: %s", response.status_code)
+                return False
+        except Exception as e:
+            log.warning("Error loading BioOntology URI %s: %s", uri, str(e))
+            return False
+
+    def _load_generic_graph(self, uri: str) -> bool:
+        """Load RDF from a generic HTTP URI with format negotiation.
+
+        Attempts parsing with multiple formats: default (auto-detect),
+        XML, and Turtle.
+
+        Parameters
+        ----------
+        uri : str
+            HTTP URI to load
+
+        Returns
+        -------
+        bool
+            True if successful, False otherwise
+        """
+        try:
+            response = requests.get(uri, timeout=REQUEST_TIMEOUT)
+            response.raise_for_status()
+
+            # Try parsing with multiple formats
+            for fmt in [None, "xml", "turtle"]:
+                try:
+                    if fmt:
+                        self.label_graph.parse(data=response.text, format=fmt)
+                    else:
+                        self.label_graph.parse(data=response.text)
+                    return True
+                except Exception:
+                    continue
+
+            log.warning("Failed to parse URI %s with any format", uri)
+            return False
+        except Exception as e:
+            log.warning("Error fetching URI %s: %s", uri, str(e))
+            return False
+
     def load_graph(self, uri: str | URIRef, empty_graph: bool = False) -> Graph:
-        """Loads graph into the class located at a URI into the class
+        """Load RDF graph from a URI using appropriate method based on domain.
 
         Parameters
         ----------
@@ -107,68 +226,44 @@ class resolvable_label_resolver:
         Graph
             Loaded Graph
         """
-        if str(uri) in SKIP_URIS:
+        uri_str = str(uri)
+
+        if uri_str in SKIP_URIS:
             return self.label_graph
-        
+
         if empty_graph:
             del self.label_graph
             self.label_graph = Graph()
 
         try:
-            # Check if 'bioontology' is in the URI because of different request style
-            if re.search(r"bioontology.org", str(uri), re.IGNORECASE):
-                ontology = uri.split("/ontology/")[1].split("/")[0]
-                encoded_concept = requests.utils.quote(uri, safe='')
+            parsed_uri = urlparse(uri_str)
 
-                url = f"https://data.bioontology.org/ontologies/{ontology}/classes/{encoded_concept}"
-                api_key = get_bioportal_api_key()
-
-                if not api_key:
-                    log.error("BioPortal API key is not configured. Cannot fetch data from BioOntology.")
-                    SKIP_URIS.append(str(uri))
+            # Try Wikidata special handling
+            if parsed_uri.netloc in ["wikidata.org", "www.wikidata.org"]:
+                if self._load_wikidata_graph(uri_str):
+                    return self.label_graph
+                else:
+                    SKIP_URIS.append(uri_str)
                     return self.label_graph
 
-                headers = {
-                    "Accept": "application/json",  # request JSON-LD
-                    "Authorization": f"apikey token={api_key}"
-                }
-                response = requests.get(url, headers=headers, timeout=REQUEST_TIMEOUT)
-
-                if response.status_code == 200:
-                    self.label_graph.parse(data=response.text, format="json-ld")
+            # Try BioOntology special handling
+            if re.search(r"bioontology.org", uri_str, re.IGNORECASE):
+                if self._load_bioontology_graph(uri_str):
+                    return self.label_graph
                 else:
-                    log.error("Failed to fetch data: %s", response.status_code)
-                    log.error("Response text: %s", response.text)
-                    SKIP_URIS.append(str(uri))
-            else:
-                try:
-                    response = requests.get(str(uri), timeout=REQUEST_TIMEOUT)
-                    response.raise_for_status()
-                    
-                    # Try parsing with different formats
-                    for format in [None, "xml", "turtle"]:
-                        try:
-                            if format:
-                                self.label_graph.parse(data=response.text, format=format)
-                            else:
-                                self.label_graph.parse(data=response.text)
-                            return self.label_graph
-                        except Exception:
-                            continue
-                    
-                    # If all formats failed
-                    log.warning("Failed to parse URI %s with all formats", uri)
-                    SKIP_URIS.append(str(uri))
-                except Exception as e:
-                    log.warning("Error fetching URI %s: %s", uri, str(e))
-                    SKIP_URIS.append(str(uri))
-        except Exception as e:
-            if "404" in str(e) or "Not Found" in str(e):
-                log.warning("URI %s returned 404 Not Found. Adding to skip list.", uri)
-            else:
-                log.warning("Error loading graph from %s: %s", uri, str(e))
-            SKIP_URIS.append(str(uri))
+                    SKIP_URIS.append(uri_str)
+                    return self.label_graph
 
+            # Try generic HTTP loading
+            if self._load_generic_graph(uri_str):
+                return self.label_graph
+            else:
+                SKIP_URIS.append(uri_str)
+                return self.label_graph
+
+        except Exception as e:
+            log.warning("Error loading graph from %s: %s", uri_str, str(e))
+            SKIP_URIS.append(uri_str)
         return self.label_graph
 
     def load_and_translate_uri(self, subject_uri: str | URIRef) -> list[dict[str, str]]:
