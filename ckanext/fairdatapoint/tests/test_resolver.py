@@ -401,8 +401,20 @@ class TestWikidataURIHandling:
         # Verify the correct Wikidata API endpoint was called
         mock_requests_get.assert_called_once()
         called_url = mock_requests_get.call_args[0][0]
+        called_kwargs = mock_requests_get.call_args[1]
+        headers = called_kwargs.get("headers") or {}
+
         assert "Special:EntityData/Q123.ttl" in called_url
-        
+
+        # Verify that appropriate headers are sent for content negotiation and identification
+        # (these assertions intentionally check for key substrings rather than exact matches,
+        # to avoid over-coupling tests to minor header formatting changes)
+        accept_header = headers.get("Accept", "")
+        user_agent_header = headers.get("User-Agent", "")
+
+        assert "turtle" in accept_header.lower()
+        assert user_agent_header != ""
+
         # Check that the graph contains data
         assert len(result_graph) > 0
 
