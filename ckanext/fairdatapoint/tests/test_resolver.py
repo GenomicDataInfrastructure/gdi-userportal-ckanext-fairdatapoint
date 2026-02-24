@@ -376,6 +376,30 @@ class TestWikidataURIHandling:
     """Test Wikidata-specific URI handling in the resolver"""
 
     @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_wikidata_uri_with_non_entity_or_wiki_path_is_skipped(
+        self, mock_requests_get
+    ):
+        """Wikidata-domain URI with other paths should be skipped without raising."""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+
+        SKIP_URIS.clear()
+
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph()
+
+        test_uri = "https://www.wikidata.org/some/other/path"
+
+        # Execute: this must not raise
+        result_graph = resolver.load_graph(test_uri)
+
+        # The resolver currently skips unsupported Wikidata paths
+        assert test_uri in SKIP_URIS
+        # No outbound request is made because entity id extraction fails early
+        mock_requests_get.assert_not_called()
+        # Return type remains stable
+        assert isinstance(result_graph, Graph)
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
     def test_load_wikidata_graph_with_entity_uri(self, mock_requests_get):
         """Test loading Wikidata graph with /entity/ format URI"""
         from ckanext.fairdatapoint.resolver import SKIP_URIS

@@ -148,6 +148,10 @@ class resolvable_label_resolver:
         bool
             True if successful, False otherwise
         """
+        if "/ontology/" not in uri:
+            log.warning("BioOntology URI does not contain '/ontology/': %s", uri)
+            return False
+        
         try:
             ontology = uri.split("/ontology/")[1].split("/")[0]
             encoded_concept = requests.utils.quote(uri, safe='')
@@ -191,7 +195,16 @@ class resolvable_label_resolver:
             True if successful, False otherwise
         """
         try:
-            response = requests.get(uri, timeout=REQUEST_TIMEOUT)
+            headers = {
+                "Accept": (
+                    "text/turtle, "
+                    "application/ld+json, "
+                    "application/rdf+xml;q=0.9, "
+                    "application/n-triples;q=0.8, "
+                    "*/*;q=0.1"
+                )
+            }
+            response = requests.get(uri, headers=headers, timeout=REQUEST_TIMEOUT)
             response.raise_for_status()
 
             # Try parsing with multiple formats
