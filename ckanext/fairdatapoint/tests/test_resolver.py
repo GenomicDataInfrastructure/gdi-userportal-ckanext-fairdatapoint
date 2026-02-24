@@ -371,3 +371,198 @@ class TestGenericResolverClass:
         # Verify URI was added to skip list after parsing failures
         assert test_uri in SKIP_URIS
 
+
+class TestWikidataURIHandling:
+    """Test Wikidata-specific URI handling in the resolver"""
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_wikidata_graph_with_entity_uri(self, mock_requests_get):
+        """Test loading Wikidata graph with /entity/ format URI"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+        
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph()
+        
+        # Mock response with Turtle data
+        mock_response = MagicMock()
+        mock_response.text = """@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<http://www.wikidata.org/entity/Q123>
+    rdfs:label "test entity"@en ;
+    skos:prefLabel "test entiteit"@nl ."""
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+        
+        test_uri = "http://www.wikidata.org/entity/Q123"
+        result_graph = resolver.load_graph(test_uri)
+        
+        # Verify the correct Wikidata API endpoint was called
+        mock_requests_get.assert_called_once()
+        called_url = mock_requests_get.call_args[0][0]
+        assert "Special:EntityData/Q123.ttl" in called_url
+        
+        # Check that the graph contains data
+        assert len(result_graph) > 0
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_wikidata_graph_with_wiki_uri(self, mock_requests_get):
+        """Test loading Wikidata graph with /wiki/ format URI"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+        
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph()
+        
+        # Mock response with Turtle data
+        mock_response = MagicMock()
+        mock_response.text = """@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<http://www.wikidata.org/entity/Q456>
+    rdfs:label "another entity"@en ."""
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+        
+        # Test with /wiki/ format (should be converted to Special:EntityData)
+        test_uri = "http://www.wikidata.org/wiki/Q456"
+        result_graph = resolver.load_graph(test_uri)
+        
+        # Verify the correct Wikidata API endpoint was called
+        mock_requests_get.assert_called_once()
+        called_url = mock_requests_get.call_args[0][0]
+        assert "Special:EntityData/Q456.ttl" in called_url
+        
+        # Check that the graph contains data
+        assert len(result_graph) > 0
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_wikidata_graph_with_property_uri(self, mock_requests_get):
+        """Test loading Wikidata graph with Property ID (P prefix)"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+        
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph()
+        
+        # Mock response
+        mock_response = MagicMock()
+        mock_response.text = """@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<http://www.wikidata.org/entity/P31>
+    rdfs:label "instance of"@en ."""
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+        
+        test_uri = "http://www.wikidata.org/wiki/P31"
+        result_graph = resolver.load_graph(test_uri)
+        
+        # Verify the correct endpoint with Property ID
+        mock_requests_get.assert_called_once()
+        called_url = mock_requests_get.call_args[0][0]
+        assert "Special:EntityData/P31.ttl" in called_url
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_wikidata_graph_handles_http_error(self, mock_requests_get):
+        """Test that HTTP errors are handled gracefully for Wikidata URIs"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+        
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph()
+        
+        # Mock failed response
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = Exception("HTTP 404")
+        mock_requests_get.return_value = mock_response
+        
+        test_uri = "http://www.wikidata.org/entity/Q99999999"
+        result_graph = resolver.load_graph(test_uri)
+        
+        # URI should be added to skip list after failure
+        assert test_uri in SKIP_URIS
+        # Should return the (empty) graph without raising exception
+        assert isinstance(result_graph, Graph)
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_wikidata_different_domains(self, mock_requests_get):
+        """Test that both wikidata.org and www.wikidata.org are recognized"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+        
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph()
+        
+        mock_response = MagicMock()
+        mock_response.text = """@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+<http://www.wikidata.org/entity/Q789> rdfs:label "test"@en ."""
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+        
+        # Test without www prefix
+        test_uri1 = "http://wikidata.org/wiki/Q789"
+        resolver.load_graph(test_uri1)
+        
+        assert mock_requests_get.call_count == 1
+        called_url = mock_requests_get.call_args[0][0]
+        assert "Special:EntityData/Q789.ttl" in called_url
+        
+        # Reset and test with www prefix
+        mock_requests_get.reset_mock()
+        SKIP_URIS.clear()
+        resolver.label_graph = Graph()
+        
+        test_uri2 = "https://www.wikidata.org/entity/Q789"
+        resolver.load_graph(test_uri2)
+        
+        assert mock_requests_get.call_count == 1
+        called_url = mock_requests_get.call_args[0][0]
+        assert "Special:EntityData/Q789.ttl" in called_url
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_and_translate_wikidata_uri_complete_flow(self, mock_requests_get):
+        """Test complete end-to-end flow of loading and translating a Wikidata URI"""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+        
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph()
+        
+        # Mock response with multilingual labels
+        mock_response = MagicMock()
+        mock_response.text = """@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<http://www.wikidata.org/entity/Q29937289>
+    skos:prefLabel "data catalog"@en, "datacatalogus"@nl ."""
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+        
+        # Use /entity/ format to match what Wikidata actually returns in the RDF
+        test_uri = "http://www.wikidata.org/entity/Q29937289"
+        
+        # Call the complete flow
+        ckan_translation_list = resolver.load_and_translate_uri(test_uri)
+        
+        # Verify translations were extracted
+        assert len(ckan_translation_list) == 2
+        
+        # Sort for consistent comparison
+        ckan_translation_list = sorted(
+            ckan_translation_list, key=lambda x: x["lang_code"]
+        )
+        
+        # Verify the expected format
+        expected = [
+            {
+                "term": "http://www.wikidata.org/entity/Q29937289",
+                "term_translation": "data catalog",
+                "lang_code": "en",
+            },
+            {
+                "term": "http://www.wikidata.org/entity/Q29937289",
+                "term_translation": "datacatalogus",
+                "lang_code": "nl",
+            },
+        ]
+        
+        assert ckan_translation_list == expected
