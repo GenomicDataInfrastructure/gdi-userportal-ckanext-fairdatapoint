@@ -77,8 +77,6 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
 
         dataset_dict["tags"] = validate_tags(dataset_dict.get("tags", []))
 
-        dataset_dict = self._fix_wikidata_uris(dataset_dict, PACKAGE_REPLACE_FIELDS)
-
         resolve_labels(dataset_dict)
 
         return dataset_dict
@@ -105,53 +103,3 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
                 )
 
         return sanitized
-
-    @staticmethod
-    def _rewrite_wikidata_url(uri: str) -> str:
-        """This function fixes Wikidata URIs to use references instead of web URI
-
-        It is necessary to fix this for label resolving, as subject in the graph won't match
-        """
-        # URL
-        try:
-            parsed_url = urllib.parse.urlparse(uri)
-
-            if (
-                parsed_url.scheme.startswith("http")
-                and parsed_url.netloc in WIKIDATA_DOMAINS
-                and parsed_url.path.startswith("/wiki/")
-            ):
-                # Find the entity ID; which comes after the /wiki/ part of the URI
-                entity_id = parsed_url.path[len("/wiki/") :]
-                # Make sure it is an actualy valid entity ID, they always start with a letter,
-                # followed by numbers. See https://www.wikidata.org/wiki/Wikidata:Identifiers
-                # Items typically start with a Q, but let's stay flexible.
-                if re.fullmatch("[a-zA-Z]\d+", entity_id):
-                    # All conditions are met. We can rewrite the Wikidata url.
-                    new_url = f"http://www.wikidata.org/entity/{entity_id}"
-
-                    return new_url
-        except ValueError:
-            pass
-
-        return uri
-
-    def _fix_wikidata_uris(self, dataset_dict: dict, fields_list: list[str]):
-        for field in fields_list:
-            value = dataset_dict.get(field)
-            new_value = None
-            if value:
-                if isinstance(value, List):
-                    rewritten = []
-                    for uri in value:
-                        if isinstance(uri, str):
-                            rewritten.append(self._rewrite_wikidata_url(uri))
-                        else:
-                            rewritten.append(uri)
-                    new_value = rewritten
-                elif isinstance(value, str):
-                    new_value = self._rewrite_wikidata_url(value)
-                else:
-                    new_value = value
-                dataset_dict[field] = new_value
-        return dataset_dict
