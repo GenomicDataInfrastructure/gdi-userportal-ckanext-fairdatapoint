@@ -12,6 +12,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.6.10] - 2026-02-25
+
+### Changed
+- Feedback sourcery by @Quinten in 9e03c1c
+- doc: update CHANGELOG.md for v1.6.9 by @LNDS-Sysadmins in 92acab7
+- doc: update CHANGELOG.md for v1.6.8 by @LNDS-Sysadmins in 367113a
+
+
+### Fixed
+- Update ckanext/fairdatapoint/tests/test_resolver.py by @Quinten in 195dda3
+- Replace wikidata URL tests with resolver tests by @Quinten in 0f85ca4
+- Enhance RDF resolver and add publisher_type by @Quinten in 245f3fe
+
+
 ## [v1.6.9] - 2026-02-16
 
 ### Changed
