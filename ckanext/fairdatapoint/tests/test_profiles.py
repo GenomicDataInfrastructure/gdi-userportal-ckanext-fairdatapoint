@@ -6,11 +6,13 @@ import json
 from pathlib import Path
 
 import pytest
-from rdflib import Graph, URIRef
+from rdflib import BNode, Graph, Literal, URIRef
+from rdflib.namespace import RDF
 
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
     FairDataPointRecordToPackageConverter,
 )
+from ckanext.dcat.profiles import DCAT, DCT, XSD
 from ckanext.fairdatapoint.profiles import (
     FAIRDataPointDCATAPProfile,
     validate_tags,
@@ -147,6 +149,109 @@ def test_parse_dataset():
 @pytest.mark.usefixtures("with_plugins")
 class TestParseDatasetTagsTranslated:
     """Test parse_dataset with tags_translated as dict"""
+
+    def test_parse_dataset_builds_temporal_coverage_from_legacy_temporal_fields(self):
+        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
+        profile._dataset_schema = {
+            "dataset_fields": [
+                {"field_name": "temporal_start"},
+                {"field_name": "temporal_end"},
+                {
+                    "field_name": "temporal_coverage",
+                    "repeating_subfields": [
+                        {"field_name": "start"},
+                        {"field_name": "end"},
+                    ],
+                },
+            ],
+            "resource_fields": [],
+        }
+
+        dataset_dict = {
+            "extras": [
+                {"key": "temporal_start", "value": "2020-01-01"},
+                {"key": "temporal_end", "value": "2025-12-31"},
+            ],
+            "resources": [],
+        }
+        dataset_ref = URIRef("http://example.com/dataset")
+
+        result = profile.parse_dataset(dataset_dict, dataset_ref)
+
+        assert result["temporal_start"] == "2020-01-01"
+        assert result["temporal_end"] == "2025-12-31"
+        assert result["temporal_coverage"] == [
+            {"start": "2020-01-01", "end": "2025-12-31"}
+        ]
+
+    def test_parse_dataset_builds_multiple_temporal_coverages_from_rdf(self):
+        graph = Graph()
+        dataset_ref = URIRef("http://example.com/dataset")
+        first_period = BNode()
+        second_period = BNode()
+
+        graph.add((dataset_ref, RDF.type, DCAT.Dataset))
+        graph.add((dataset_ref, DCT.temporal, first_period))
+        graph.add((dataset_ref, DCT.temporal, second_period))
+        graph.add(
+            (
+                first_period,
+                DCAT.startDate,
+                Literal("2021-01-01T00:00:00Z", datatype=XSD.dateTime),
+            )
+        )
+        graph.add(
+            (
+                first_period,
+                DCAT.endDate,
+                Literal("2021-12-31T00:00:00Z", datatype=XSD.dateTime),
+            )
+        )
+        graph.add(
+            (
+                second_period,
+                DCAT.startDate,
+                Literal("2022-01-01T00:00:00Z", datatype=XSD.dateTime),
+            )
+        )
+        graph.add(
+            (
+                second_period,
+                DCAT.endDate,
+                Literal("2022-12-31T00:00:00Z", datatype=XSD.dateTime),
+            )
+        )
+
+        profile = FAIRDataPointDCATAPProfile(graph=graph, compatibility_mode=False)
+        profile._dataset_schema = {
+            "dataset_fields": [
+                {"field_name": "temporal_start"},
+                {"field_name": "temporal_end"},
+                {
+                    "field_name": "temporal_coverage",
+                    "repeating_subfields": [
+                        {"field_name": "start"},
+                        {"field_name": "end"},
+                    ],
+                },
+            ],
+            "resource_fields": [],
+        }
+
+        result = profile.parse_dataset({}, dataset_ref)
+
+        assert result["temporal_start"] == "2021-01-01T00:00:00Z"
+        assert result["temporal_end"] == "2021-12-31T00:00:00Z"
+        assert result["temporal_coverage"] == [
+            {
+                "start": "2021-01-01T00:00:00Z",
+                "end": "2021-12-31T00:00:00Z",
+            },
+            {
+                "start": "2022-01-01T00:00:00Z",
+                "end": "2022-12-31T00:00:00Z",
+            },
+        ]
 
     def test_parse_dataset_with_tags_translated_default_lang_exists(self):
         """Test parse_dataset when tags_translated has default_lang"""
