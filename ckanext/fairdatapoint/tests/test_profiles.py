@@ -240,16 +240,16 @@ class TestParseDatasetTagsTranslated:
 
         result = profile.parse_dataset({}, dataset_ref)
 
-        assert result["temporal_start"] == "2021-01-01T00:00:00Z"
-        assert result["temporal_end"] == "2021-12-31T00:00:00Z"
+        assert result["temporal_start"] == "2021-01-01T00:00:00+00:00"
+        assert result["temporal_end"] == "2021-12-31T00:00:00+00:00"
         assert result["temporal_coverage"] == [
             {
-                "start": "2021-01-01T00:00:00Z",
-                "end": "2021-12-31T00:00:00Z",
+                "start": "2021-01-01T00:00:00+00:00",
+                "end": "2021-12-31T00:00:00+00:00",
             },
             {
-                "start": "2022-01-01T00:00:00Z",
-                "end": "2022-12-31T00:00:00Z",
+                "start": "2022-01-01T00:00:00+00:00",
+                "end": "2022-12-31T00:00:00+00:00",
             },
         ]
 
