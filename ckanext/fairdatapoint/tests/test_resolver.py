@@ -428,7 +428,7 @@ class TestWikidataURIHandling:
         called_kwargs = mock_requests_get.call_args[1]
         headers = called_kwargs.get("headers") or {}
 
-        assert "Special:EntityData/Q123.ttl" in called_url
+        assert "Special:EntityData/Q123" in called_url
 
         # Verify that appropriate headers are sent for content negotiation and identification
         # (these assertions intentionally check for key substrings rather than exact matches,
@@ -467,7 +467,7 @@ class TestWikidataURIHandling:
         # Verify the correct Wikidata API endpoint was called
         mock_requests_get.assert_called_once()
         called_url = mock_requests_get.call_args[0][0]
-        assert "Special:EntityData/Q456.ttl" in called_url
+        assert "Special:EntityData/Q456" in called_url
         
         # Check that the graph contains data
         assert len(result_graph) > 0
@@ -496,7 +496,7 @@ class TestWikidataURIHandling:
         # Verify the correct endpoint with Property ID
         mock_requests_get.assert_called_once()
         called_url = mock_requests_get.call_args[0][0]
-        assert "Special:EntityData/P31.ttl" in called_url
+        assert "Special:EntityData/P31" in called_url
 
     @patch("ckanext.fairdatapoint.resolver.requests.get")
     def test_load_wikidata_graph_handles_http_error(self, mock_requests_get):
@@ -541,7 +541,7 @@ class TestWikidataURIHandling:
         
         assert mock_requests_get.call_count == 1
         called_url = mock_requests_get.call_args[0][0]
-        assert "Special:EntityData/Q789.ttl" in called_url
+        assert "Special:EntityData/Q789" in called_url
         
         # Reset and test with www prefix
         mock_requests_get.reset_mock()
@@ -553,7 +553,7 @@ class TestWikidataURIHandling:
         
         assert mock_requests_get.call_count == 1
         called_url = mock_requests_get.call_args[0][0]
-        assert "Special:EntityData/Q789.ttl" in called_url
+        assert "Special:EntityData/Q789" in called_url
 
     @patch("ckanext.fairdatapoint.resolver.requests.get")
     def test_load_and_translate_wikidata_uri_complete_flow(self, mock_requests_get):

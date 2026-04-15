@@ -119,7 +119,7 @@ class resolvable_label_resolver:
 
         try:
             wikidata_url = (
-                f"https://www.wikidata.org/wiki/Special:EntityData/{entity_id}.ttl"
+                f"https://www.wikidata.org/wiki/Special:EntityData/{entity_id}"
             )
             headers = {
                 "Accept": "text/turtle",
