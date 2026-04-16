@@ -12,6 +12,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.6.11] - 2026-04-16
+
+### Changed
+- chore(deps): update dependency requests to ~=2.33.1 [security] by @Renovate Bot in 3aad013
+- doc: update CHANGELOG.md for v1.6.10 by @LNDS-Sysadmins in d5608d7
+
+
+### Fixed
+- fix: change Wikidata URL to restore label resolving by @Alexander Harms in 1e89bc0
+
+
 ## [v1.6.10] - 2026-02-25
 
 ### Changed
