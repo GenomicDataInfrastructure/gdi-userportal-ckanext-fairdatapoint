@@ -88,6 +88,8 @@ jobs:
         run: apt-get update && apt-get install -y unzip
       - name: Sonar scan
         uses: SonarSource/sonarqube-scan-action@v8
+        with:
+          skipSignatureVerification: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
