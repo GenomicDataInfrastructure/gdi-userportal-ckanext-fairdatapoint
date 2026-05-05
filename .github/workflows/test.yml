@@ -60,7 +60,7 @@ jobs:
           cd ..
 
           # Scheming release 3.1.0
-          pip install -e 'git+https://github.com/ckan/ckanext-scheming.git@release-3.1.0#egg=ckanext-scheming[requirements]'
+          pip install -e 'ckanext-scheming[requirements] @ git+https://github.com/ckan/ckanext-scheming.git@release-3.1.0'
 
           # DCAT extension for FAIR Data Point
           pip install -e 'git+https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-dcat.git@v2.3.3#egg=ckanext-dcat'
