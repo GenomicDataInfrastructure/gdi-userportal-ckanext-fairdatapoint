@@ -18,7 +18,7 @@ jobs:
       options: --user root
     services:
       solr:
-        image: ckan/ckan-solr:2.11-solr9
+        image: ckan/ckan-solr:2.12-solr9
       postgres:
         image: ckan/ckan-postgres-dev:2.12
         env:
@@ -41,7 +41,7 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: REUSE Compliance Check
         uses: fsfe/reuse-action@v6
       - name: Install requirements (common)
