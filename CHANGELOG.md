@@ -12,6 +12,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.6.12] - 2026-07-06
+
+### Changed
+- chore(deps): update actions/checkout action to v7 by @Renovate Bot in 5888375
+- chore(deps): update dependency requests to ~=2.34.2 by @Renovate Bot in 98204c5
+- chore(deps): update ckan/ckan-postgres-dev docker tag to v2.12 by @Renovate Bot in 469f0cc
+- chore(deps): update ckan/ckan-solr docker tag to v2.12 by @Renovate Bot in 938edbb
+- chore(deps): update sonarsource/sonarqube-scan-action action to v8 by @Renovate Bot in e389008
+- doc: update CHANGELOG.md for v1.6.11 by @LNDS-Sysadmins in bd72b53
+
+
+### Fixed
+- fix(sonar) validation when connecting to sonarcloud by @Hans-christian in ffe86fb
+- fix: update ckanext-scheming pip install syntax for newer pip compatibility by @copilot-swe-agent[bot] in 24b49dc
+
+
 ## [v1.6.11] - 2026-04-16
 
 ### Changed
