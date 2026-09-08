@@ -87,7 +87,6 @@ jobs:
       - name: Install unzip
         run: apt-get update && apt-get install -y unzip
       - name: Sonar scan
-        continue-on-error: true
         uses: SonarSource/sonarqube-scan-action@v8
         with:
           skipSignatureVerification: true
