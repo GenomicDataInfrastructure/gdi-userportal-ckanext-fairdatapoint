@@ -51,6 +51,43 @@ def test_validate_tags(input_tags, expected_tags):
 
 @pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
 @pytest.mark.usefixtures("with_plugins")
+def test_parse_dataset_multi_profile_dataset_status():
+    """
+    A harvest source's "profile" config can list multiple space-separated
+    profile names (mirroring ckanext-dcat's own ckanext.dcat.rdf.profiles
+    convention). Combining fairdatapoint_dcat_ap with euro_dcat_ap_nl should
+    pick up adms:status (a DCAT-AP-NL 3.0 addition, not part of
+    fairdatapoint_dcat_ap's own inheritance chain).
+    """
+    fdp_record_to_package = FairDataPointRecordToPackageConverter(
+        profile="fairdatapoint_dcat_ap euro_dcat_ap_nl"
+    )
+    data = """
+    @prefix dcat: <http://www.w3.org/ns/dcat#> .
+    @prefix dct: <http://purl.org/dc/terms/> .
+    @prefix adms: <http://www.w3.org/ns/adms#> .
+
+    <https://example.com/dataset1>
+      a dcat:Dataset ;
+      dct:title "Test dataset" ;
+      dct:description "A test dataset" ;
+      adms:status <http://publications.europa.eu/resource/authority/dataset-status/DEVELOP> ;
+    .
+    """
+
+    actual = fdp_record_to_package.record_to_package(
+        guid="dataset=https://example.com/dataset1",
+        record=data,
+        series_mapping=None,
+    )
+
+    assert actual["dataset_status"] == (
+        "http://publications.europa.eu/resource/authority/dataset-status/DEVELOP"
+    )
+
+
+@pytest.mark.ckan_config("ckan.plugins", "scheming_datasets")
+@pytest.mark.usefixtures("with_plugins")
 def test_parse_dataset():
     """Dataset with keywords which should be modified"""
     fdp_record_to_package = FairDataPointRecordToPackageConverter(

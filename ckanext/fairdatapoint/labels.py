@@ -19,6 +19,7 @@ PACKAGE_REPLACE_FIELDS = [
     "code_values",
     "coding_system",
     "conforms_to",
+    "dataset_status",
     "dcat_type",
     "has_version",
     "health_category",
