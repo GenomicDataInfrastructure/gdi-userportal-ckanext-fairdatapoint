@@ -108,17 +108,29 @@ class TestCreatePackageRetriesOnNameConflict:
     def test_gives_up_after_max_retries(
         self, harvester, harvest_object, package_dict, context
     ):
+        calls = []
+
         def always_conflicts(ctx, pkg_dict):
+            calls.append(dict(pkg_dict))
             raise _name_conflict()
 
         with _patch_get_action(always_conflicts), _patch_session(), patch.object(
             harvester, "_gen_new_name", return_value="some-title-n"
-        ), patch.object(harvester, "_save_object_error") as save_object_error:
+        ) as gen_new_name, patch.object(
+            harvester, "_save_object_error"
+        ) as save_object_error:
             result = harvester._create_or_update_package(
                 package_dict, "create", context, harvest_object
             )
 
         assert result is None
+        # every attempt is exhausted, and only the last one skips generating
+        # a new name since there's no further retry to use it for.
+        assert [call["name"] for call in calls] == (
+            ["some-title"] + ["some-title-n"] * (MAX_NAME_CONFLICT_RETRIES - 1)
+        )
+        assert len(calls) == MAX_NAME_CONFLICT_RETRIES
+        assert gen_new_name.call_count == MAX_NAME_CONFLICT_RETRIES - 1
         save_object_error.assert_called_once()
         assert str(MAX_NAME_CONFLICT_RETRIES) in save_object_error.call_args[0][0]
 
