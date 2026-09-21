@@ -152,6 +152,7 @@ def test_parse_dataset():
     assert actual["modified"] == "2019-10-30 23:00:00"
     assert actual["publisher"] == [
         {
+            "country": "",
             "email": "",
             "identifier": "",
             "name": "",

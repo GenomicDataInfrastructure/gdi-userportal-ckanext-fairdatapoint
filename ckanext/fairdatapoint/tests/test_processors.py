@@ -65,11 +65,12 @@ class TestProcessors:
                 "identifier": "https://orcid.org/0000-0002-4348-707X",
                 "name": "N.K. De Vries",
                 "uri": "",
-                "url": "",
+                "url": [],
             }
         ]
         assert actual_dataset["creator"] == [
             {
+                "country": "",
                 "email": "",
                 "identifier": "",
                 "name": "",
@@ -80,6 +81,7 @@ class TestProcessors:
         ]
         assert actual_dataset["publisher"] == [
             {
+                "country": "",
                 "email": "",
                 "identifier": "",
                 "name": "",
@@ -123,6 +125,7 @@ class TestProcessors:
         assert actual["license_id"] == ""
         assert actual["publisher"] == [
             {
+                "country": "",
                 "email": "",
                 "identifier": "",
                 "name": "Automatic",
