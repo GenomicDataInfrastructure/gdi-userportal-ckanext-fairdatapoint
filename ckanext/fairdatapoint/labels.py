@@ -15,10 +15,11 @@ log = logging.getLogger(__name__)
 
 PACKAGE_REPLACE_FIELDS = [
     "access_rights",
-    "applicable_legislation", 
+    "applicable_legislation",
     "code_values",
     "coding_system",
     "conforms_to",
+    "creator",
     "dataset_status",
     "dcat_type",
     "has_version",
@@ -28,6 +29,7 @@ PACKAGE_REPLACE_FIELDS = [
     "language",
     "legal_basis",
     "personal_data",
+    "publisher",
     "publisher_type",
     "purpose",
     "qualified_attribution",
