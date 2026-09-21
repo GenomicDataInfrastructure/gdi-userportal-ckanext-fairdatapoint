@@ -20,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - chore(deps): update ckan/ckan-postgres-dev docker tag to v2.12 by @Renovate Bot in 469f0cc
 - chore(deps): update ckan/ckan-solr docker tag to v2.12 by @Renovate Bot in 938edbb
 - chore(deps): update sonarsource/sonarqube-scan-action action to v8 by @Renovate Bot in e389008
-- doc: update CHANGELOG.md for v1.6.11 by @LNDS-Sysadmins in bd72b53
 
 
 ### Fixed
