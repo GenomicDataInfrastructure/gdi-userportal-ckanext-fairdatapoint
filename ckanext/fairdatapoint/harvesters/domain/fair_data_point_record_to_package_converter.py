@@ -15,12 +15,16 @@ log = logging.getLogger(__name__)
 
 class FairDataPointRecordToPackageConverter:
     def __init__(self, profile: str):
+        # Space-separated list of profile names, e.g. "fairdatapoint_dcat_ap
+        # euro_dcat_ap_nl", mirroring ckanext-dcat's own
+        # `ckanext.dcat.rdf.profiles` config convention. A single profile
+        # name (no spaces) still works unchanged.
         self.profile = profile
 
     def record_to_package(
         self, guid: str, record: str, series_mapping=None
     ) -> Optional[Dict[str, Any]]:
-        parser = FairDataPointRDFParser(profiles=[self.profile])
+        parser = FairDataPointRDFParser(profiles=self.profile.split())
 
         try:
             parser.parse(record, _format="ttl")
