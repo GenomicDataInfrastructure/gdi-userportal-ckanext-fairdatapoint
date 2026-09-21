@@ -367,6 +367,39 @@ class TestTermsInPackageDictWithResources:
         }
         assert set(result) == expected_uris
 
+    def test_terms_in_package_dict_with_publisher_and_creator(self):
+        """Regression test: publisher_type/type nested inside publisher and creator
+        must be collected. See NESTED_FIELD_TRANSLATIONS for "publisher"/"creator" -
+        those nested rules only fire if "publisher"/"creator" are in PACKAGE_REPLACE_FIELDS."""
+        package_dict = {
+            "publisher": [
+                {
+                    "uri": "http://example.com/publisher-agent",
+                    "name": "Example Publisher",
+                    "publisher_type": [
+                        "http://purl.org/adms/publishertype/Academia-ScientificOrganisation"
+                    ],
+                    "type": "http://example.com/publisher-type",
+                }
+            ],
+            "creator": [
+                {
+                    "uri": "http://example.com/creator-agent",
+                    "name": "Example Creator",
+                    "publisher_type": ["http://example.com/creator-publisher-type"],
+                    "type": "http://example.com/creator-type",
+                }
+            ],
+        }
+        result = terms_in_package_dict(package_dict)
+        expected_uris = {
+            "http://purl.org/adms/publishertype/Academia-ScientificOrganisation",
+            "http://example.com/publisher-type",
+            "http://example.com/creator-publisher-type",
+            "http://example.com/creator-type",
+        }
+        assert set(result) == expected_uris
+
     def test_terms_in_package_dict_with_resource_access_service_empty_list(self):
         """Test terms_in_package_dict with resource where access_service is empty list"""
         package_dict = {
