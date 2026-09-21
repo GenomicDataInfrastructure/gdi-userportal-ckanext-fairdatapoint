@@ -12,6 +12,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.7.0] - 2026-09-21
+
+### Changed
+- Update test_package_name_race_condition.py by @Quinten in 0131db6
+- Guard package-name collision checks by @Quinten in cbf8eb6
+- Revert "Update test.yml" by @Quinten in 5353b10
+- Update test.yml by @Quinten in 7af475d
+- test: flipped the test to express the desired state by @TimVanMourik in 65e366d
+- test: test that points out the DB race condition by @TimVanMourik in ea6e9bf
+- Collect nested creator and publisher terms by @Quinten in 140fc0e
+- doc: update CHANGELOG.md for v1.6.12 by @LNDS-Sysadmins in d176a8b
+
+
+### Fixed
+- Merge pull request #163 from GenomicDataInfrastructure/fix/multi-profile-support+status by @Quinten in e257691
+- fix: race condition fix by @TimVanMourik in 5805424
+
+
+### Removed
+- Update CHANGELOG.md to remove v1.6.11 entry by @Quinten in 10bc4ec
+
+
 ## [v1.6.12] - 2026-07-06
 
 ### Changed
