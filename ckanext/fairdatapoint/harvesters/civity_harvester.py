@@ -6,6 +6,7 @@
 import cgitb
 import json
 import logging
+import re
 import sys
 import uuid
 import warnings
@@ -13,6 +14,7 @@ from abc import abstractmethod
 
 import ckan.plugins.toolkit as toolkit
 from ckan import model
+from sqlalchemy.exc import IntegrityError
 
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 from ckanext.harvest.harvesters import HarvesterBase
@@ -22,6 +24,8 @@ from ckanext.harvest.model import HarvestObjectExtra as HOExtra
 ID = "id"
 
 log = logging.getLogger(__name__)
+
+_PACKAGE_NAME_KEY_VIOLATION_RE = re.compile(r'unique constraint "package_name_key"')
 
 RESOLVE_LABELS = "resolve_labels"
 
@@ -529,19 +533,25 @@ class CivityHarvester(HarvesterBase):
         True if a `package_name_key` unique-constraint violation shows up
         anywhere in this exception's cause/context chain.
 
-        A chain walk is needed rather than a plain isinstance/errno check
-        because the exact exception class that surfaces a DB-level name
-        collision can vary: a direct `IntegrityError`, or something
-        SQLAlchemy/CKAN wrapped around it (e.g. a `PendingRollbackError` from
-        another query hitting the same already-aborted session), depending on
-        what else touches the session in between the conflicting insert and
-        the exception actually reaching us.
+        A chain walk is needed rather than a plain isinstance/errno check on
+        the top-level exception because the exact exception class that
+        surfaces a DB-level name collision can vary: a direct
+        `IntegrityError`, or something SQLAlchemy/CKAN wrapped around it
+        (e.g. a `PendingRollbackError` from another query hitting the same
+        already-aborted session), depending on what else touches the session
+        in between the conflicting insert and the exception actually
+        reaching us. Each node in the chain still has to actually be an
+        `IntegrityError` naming the `package_name_key` constraint, so an
+        unrelated failure that merely mentions that string isn't mistaken
+        for a name collision.
         """
         seen = set()
         exc = error
         while exc is not None and id(exc) not in seen:
             seen.add(id(exc))
-            if "package_name_key" in str(exc):
+            if isinstance(exc, IntegrityError) and _PACKAGE_NAME_KEY_VIOLATION_RE.search(
+                str(exc)
+            ):
                 return True
             exc = exc.__cause__ or exc.__context__
         return False

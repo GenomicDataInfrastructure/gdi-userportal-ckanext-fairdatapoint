@@ -133,3 +133,23 @@ class TestCreatePackageRetriesOnNameConflict:
                 harvester._create_or_update_package(
                     package_dict, "create", context, harvest_object
                 )
+
+    def test_reraises_non_integrity_errors_that_mention_the_constraint_name(
+        self, harvester, harvest_object, package_dict, context
+    ):
+        """
+        A failure that isn't a DB integrity error at all shouldn't be
+        mistaken for a name collision just because its message happens to
+        contain the string "package_name_key".
+        """
+
+        def fails_with_lookalike_message(ctx, pkg_dict):
+            raise RuntimeError(
+                'unrelated failure while logging query for "package_name_key" index'
+            )
+
+        with _patch_get_action(fails_with_lookalike_message), _patch_session():
+            with pytest.raises(RuntimeError):
+                harvester._create_or_update_package(
+                    package_dict, "create", context, harvest_object
+                )
