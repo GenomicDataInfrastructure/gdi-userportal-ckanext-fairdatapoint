@@ -6,6 +6,7 @@
 import cgitb
 import json
 import logging
+import re
 import sys
 import uuid
 import warnings
@@ -13,6 +14,7 @@ from abc import abstractmethod
 
 import ckan.plugins.toolkit as toolkit
 from ckan import model
+from sqlalchemy.exc import IntegrityError
 
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 from ckanext.harvest.harvesters import HarvesterBase
@@ -23,7 +25,15 @@ ID = "id"
 
 log = logging.getLogger(__name__)
 
+_PACKAGE_NAME_KEY_VIOLATION_RE = re.compile(r'unique constraint "package_name_key"')
+
 RESOLVE_LABELS = "resolve_labels"
+
+# A new package's name is picked via a check-then-insert (see
+# HarvesterBase._gen_new_name): another harvest process can commit a package
+# under that same name in the gap between the check and our own insert. This
+# bounds how many times we regenerate the name and retry before giving up.
+MAX_NAME_CONFLICT_RETRIES = 3
 
 def text_traceback():
     with warnings.catch_warnings():
@@ -404,19 +414,7 @@ class CivityHarvester(HarvesterBase):
             if ID not in package_dict.keys():
                 # ... we need to explicitly provide a new package ID.
                 package_dict[ID] = str(uuid.uuid4())
-
-            # Save reference to the package on the object
-            harvest_object.package_id = package_dict[ID]
-            harvest_object.current = True
-            harvest_object.add()
-
-            # Now safely defer and flush
-            model.Session.execute(
-                "SET CONSTRAINTS harvest_object_package_id_fkey DEFERRED"
-            )
-            model.Session.flush()
-
-            # Create the package in CKAN
+                
             package_id = self._create_or_update_package(
                 package_dict, "create", context, harvest_object
             )
@@ -462,21 +460,101 @@ class CivityHarvester(HarvesterBase):
         if "revision_id" in package_dict.keys():
             package_dict.pop("revision_id")
 
-        try:
-            action = "package_" + create_or_update
-            result = toolkit.get_action(action)(context.copy(), package_dict)
-            log.info(
-                "Successful [%s] for package with id [%s]", create_or_update, result
-            )
-        except toolkit.ValidationError as e:
-            error_message = "Error in [{}] for package [{}]: [{}]".format(
-                create_or_update, package_dict["title"], e
-            )
-            log.error(error_message)
-            self._save_object_error(error_message, harvest_object)
-            result = None
+        action = "package_" + create_or_update
+        is_create = create_or_update == "create"
+        # Only a fresh create can race another process on the package name;
+        # an update reuses the existing package's own name, so it can never
+        # collide with itself.
+        attempts = MAX_NAME_CONFLICT_RETRIES if is_create else 1
 
-        return result
+        for attempt in range(1, attempts + 1):
+            if is_create:
+                # (Re)do the harvest object bookkeeping every attempt: the
+                # rollback below after a name conflict wipes out whatever was
+                # flushed here on a prior attempt.
+                harvest_object.package_id = package_dict[ID]
+                harvest_object.current = True
+                harvest_object.add()
+                model.Session.execute(
+                    "SET CONSTRAINTS harvest_object_package_id_fkey DEFERRED"
+                )
+                model.Session.flush()
+
+            try:
+                result = toolkit.get_action(action)(context.copy(), package_dict)
+                log.info(
+                    "Successful [%s] for package with id [%s]", create_or_update, result
+                )
+                return result
+            except toolkit.ValidationError as e:
+                error_message = "Error in [{}] for package [{}]: [{}]".format(
+                    create_or_update, package_dict["title"], e
+                )
+                log.error(error_message)
+                self._save_object_error(error_message, harvest_object)
+                return None
+            except Exception as e:
+                if not is_create or not self._is_package_name_conflict(e):
+                    raise
+
+                # The session is left aborted after a failed flush; roll
+                # back before it can be used again, whether that's our own
+                # retry below or the object error logging above/downstream.
+                model.Session.rollback()
+
+                if attempt == attempts:
+                    error_message = (
+                        "Giving up creating package [{}] after {} name "
+                        "collisions in a row".format(
+                            package_dict["title"], attempts
+                        )
+                    )
+                    log.error(error_message)
+                    self._save_object_error(error_message, harvest_object)
+                    return None
+
+                new_name = self._gen_new_name(package_dict["title"])
+                log.warning(
+                    "Name collision creating package [%s] with name [%s]; "
+                    "retrying with [%s] (attempt %d/%d)",
+                    package_dict["title"],
+                    package_dict["name"],
+                    new_name,
+                    attempt,
+                    attempts,
+                )
+                package_dict["name"] = new_name
+
+        return None
+
+    @staticmethod
+    def _is_package_name_conflict(error):
+        """
+        True if a `package_name_key` unique-constraint violation shows up
+        anywhere in this exception's cause/context chain.
+
+        A chain walk is needed rather than a plain isinstance/errno check on
+        the top-level exception because the exact exception class that
+        surfaces a DB-level name collision can vary: a direct
+        `IntegrityError`, or something SQLAlchemy/CKAN wrapped around it
+        (e.g. a `PendingRollbackError` from another query hitting the same
+        already-aborted session), depending on what else touches the session
+        in between the conflicting insert and the exception actually
+        reaching us. Each node in the chain still has to actually be an
+        `IntegrityError` naming the `package_name_key` constraint, so an
+        unrelated failure that merely mentions that string isn't mistaken
+        for a name collision.
+        """
+        seen = set()
+        exc = error
+        while exc is not None and id(exc) not in seen:
+            seen.add(id(exc))
+            if isinstance(exc, IntegrityError) and _PACKAGE_NAME_KEY_VIOLATION_RE.search(
+                str(exc)
+            ):
+                return True
+            exc = exc.__cause__ or exc.__context__
+        return False
 
     def _create_resources(
         self, resource_dicts, package_id, package_title, context, harvest_object
