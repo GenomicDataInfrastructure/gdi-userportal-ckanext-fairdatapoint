@@ -10,6 +10,8 @@ from rdflib import Graph
 
 from ckanext.fairdatapoint.resolver import (
     resolvable_label_resolver,
+    _canonicalize_dpv_uri,
+    _canonicalize_uri,
 )
 
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
@@ -600,5 +602,136 @@ class TestWikidataURIHandling:
                 "lang_code": "nl",
             },
         ]
-        
+
         assert ckan_translation_list == expected
+
+
+class TestDpvCanonicalization:
+    """Tests for the DPV doc-page -> w3id.org URI canonicalizer and its wiring
+    into `load_graph`/`literal_dict_from_graph`/`load_and_translate_uri`."""
+
+    def test_canonicalize_core_module(self):
+        assert _canonicalize_dpv_uri(
+            "https://w3c.github.io/dpv/2.1/dpv/#ResearchAndDevelopment"
+        ) == "https://w3id.org/dpv#ResearchAndDevelopment"
+
+    def test_canonicalize_current_github_org(self):
+        assert _canonicalize_dpv_uri(
+            "https://w3c-cg.github.io/dpv/2.1/dpv/#AcademicResearch"
+        ) == "https://w3id.org/dpv#AcademicResearch"
+
+    def test_canonicalize_submodule(self):
+        assert _canonicalize_dpv_uri(
+            "https://w3c-cg.github.io/dpv/2.1/pd/#Age"
+        ) == "https://w3id.org/dpv/pd#Age"
+
+    def test_canonicalize_no_fragment(self):
+        assert _canonicalize_dpv_uri(
+            "https://w3c-cg.github.io/dpv/2.1/dpv/"
+        ) == "https://w3id.org/dpv"
+
+    def test_canonicalize_ignores_unrelated_host(self):
+        assert _canonicalize_dpv_uri(
+            "https://example.com/dpv/2.1/dpv/#ResearchAndDevelopment"
+        ) is None
+
+    def test_canonicalize_ignores_direct_file_links(self):
+        """A path deeper than /dpv/<version>/<module>/ (e.g. a direct .ttl download)
+        already works via content negotiation and should not be rewritten."""
+        assert _canonicalize_dpv_uri(
+            "https://w3c-cg.github.io/dpv/2.1/dpv/dpv.ttl"
+        ) is None
+
+    def test_canonicalize_host_is_case_insensitive(self):
+        """URI hostnames are case-insensitive; an upper-cased GitHub Pages host
+        should still be recognized and rewritten."""
+        assert _canonicalize_dpv_uri(
+            "https://W3C-CG.GITHUB.IO/dpv/2.1/dpv/#ResearchAndDevelopment"
+        ) == "https://w3id.org/dpv#ResearchAndDevelopment"
+
+    def test_canonicalize_uri_wrapper_swallows_malformed_input(self):
+        """A malformed URI (e.g. an invalid IPv6-style host) makes urlparse raise
+        ValueError inside an individual canonicalizer; `_canonicalize_uri` -- the
+        function every caller actually uses -- treats that as "no match" rather
+        than letting the exception escape."""
+        malformed_uri = "http://[invalid"
+        assert _canonicalize_uri(malformed_uri) == malformed_uri
+
+    def test_load_graph_does_not_raise_on_malformed_uri(self):
+        resolver = resolvable_label_resolver()
+        result_graph = resolver.load_graph("http://[invalid")
+        assert isinstance(result_graph, Graph)
+
+    def test_literal_dict_from_graph_does_not_raise_on_malformed_uri(self):
+        resolver = resolvable_label_resolver()
+        assert resolver.literal_dict_from_graph("http://[invalid") == {}
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_graph_fetches_canonical_uri(self, mock_requests_get):
+        """load_graph should fetch the w3id.org URI, not the doc-page URI."""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+
+        resolver = resolvable_label_resolver()
+
+        mock_response = MagicMock()
+        mock_response.text = """@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<https://w3id.org/dpv#ResearchAndDevelopment>
+    skos:prefLabel "Research and Development"@en ."""
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+
+        doc_page_uri = "https://w3c.github.io/dpv/2.1/dpv/#ResearchAndDevelopment"
+        resolver.load_graph(doc_page_uri)
+
+        fetched_uri = mock_requests_get.call_args.args[0]
+        assert fetched_uri == "https://w3id.org/dpv#ResearchAndDevelopment"
+
+    def test_literal_dict_from_graph_looks_up_canonical_subject(self):
+        """literal_dict_from_graph should find labels even when the graph only
+        contains the canonical w3id.org subject, given the original doc-page URI."""
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph().parse(
+            data="""
+                @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+                <https://w3id.org/dpv#ResearchAndDevelopment>
+                    skos:prefLabel "Research and Development"@en .
+            """,
+            format="turtle",
+        )
+
+        literal_dict = resolver.literal_dict_from_graph(
+            "https://w3c.github.io/dpv/2.1/dpv/#ResearchAndDevelopment"
+        )
+
+        assert literal_dict == {"en": "Research and Development"}
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_load_and_translate_dpv_doc_page_uri(self, mock_requests_get):
+        """End-to-end: the stored translation is keyed by the original doc-page
+        URI (matching what a harvested dataset actually references), even though
+        the lookup happens against the canonical w3id.org URI."""
+        from ckanext.fairdatapoint.resolver import SKIP_URIS
+        SKIP_URIS.clear()
+
+        resolver = resolvable_label_resolver()
+
+        mock_response = MagicMock()
+        mock_response.text = """@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+
+<https://w3id.org/dpv#ResearchAndDevelopment>
+    skos:prefLabel "Research and Development"@en ."""
+        mock_response.raise_for_status = MagicMock()
+        mock_requests_get.return_value = mock_response
+
+        doc_page_uri = "https://w3c.github.io/dpv/2.1/dpv/#ResearchAndDevelopment"
+        ckan_translation_list = resolver.load_and_translate_uri(doc_page_uri)
+
+        assert ckan_translation_list == [
+            {
+                "term": doc_page_uri,
+                "term_translation": "Research and Development",
+                "lang_code": "en",
+            }
+        ]
