@@ -4,10 +4,11 @@
 from __future__ import annotations
 
 import logging
-
-from rdflib import RDFS, SDO, SKOS, Graph, URIRef
 import re
+from typing import Callable
+
 import requests
+from rdflib import RDFS, SDO, SKOS, Graph, URIRef
 from urllib.parse import urlparse
 from ckanext.fairdatapoint.harvesters.config import get_bioportal_api_key
 
@@ -17,8 +18,69 @@ log = logging.getLogger(__name__)
 # Default language for a label if it is not defined (Literal without language tag)
 DEFAULT_LABEL_LANG = "en"
 LANG_LIST = ["en", "nl"]
-SKIP_URIS = []
+SKIP_URIS: set[str] = set()
 REQUEST_TIMEOUT = 100  # seconds
+
+# DPV is published as versioned, non-content-negotiable GitHub Pages docs (the org
+# also moved from w3c.github.io to w3c-cg.github.io), but every term also has a
+# canonical https://w3id.org/dpv... identifier that *does* content-negotiate and
+# always resolves to the current DPV release. Doc-page URIs are rewritten to their
+# w3id.org equivalent so DPV terms resolve regardless of which GitHub Pages mirror
+# or version a harvested source happened to reference.
+DPV_DOC_HOSTS = {"w3c.github.io", "w3c-cg.github.io"}
+DPV_DOC_PATH_RE = re.compile(r"^/dpv/(?P<version>[^/]+)/(?P<module>[^/]+)/?$")
+
+
+def _canonicalize_dpv_uri(uri_str: str) -> str | None:
+    """Rewrites a DPV GitHub Pages doc-page URI to its resolvable w3id.org URI.
+
+    Parameters
+    ----------
+    uri_str : str
+        URI to check and possibly rewrite
+
+    Returns
+    -------
+    str | None
+        The canonical https://w3id.org/dpv... URI if `uri_str` looks like a DPV
+        doc-page URI (e.g. https://w3c-cg.github.io/dpv/2.1/dpv/#Term), otherwise
+        None.
+    """
+    parsed_uri = urlparse(uri_str)
+    if parsed_uri.netloc not in DPV_DOC_HOSTS:
+        return None
+
+    match = DPV_DOC_PATH_RE.match(parsed_uri.path)
+    if not match:
+        return None
+
+    module = match.group("module")
+    canonical = "https://w3id.org/dpv" if module == "dpv" else f"https://w3id.org/dpv/{module}"
+    if parsed_uri.fragment:
+        canonical += f"#{parsed_uri.fragment}"
+    return canonical
+
+
+# Ordered list of URI canonicalizers: pure rewrites applied, in order, before a URI
+# is fetched or matched against a graph. Add an entry here when a host publishes doc
+# pages that don't content-negotiate but does have a resolvable canonical URI
+# elsewhere -- see `_canonicalize_dpv_uri` for the pattern to follow. The first
+# canonicalizer to return a non-None result wins.
+URI_CANONICALIZERS: list[Callable[[str], str | None]] = [
+    _canonicalize_dpv_uri,
+]
+
+
+def _canonicalize_uri(uri_str: str) -> str:
+    """Rewrites `uri_str` via the first matching entry in `URI_CANONICALIZERS`.
+
+    Returns `uri_str` unchanged if no canonicalizer matches.
+    """
+    for canonicalize in URI_CANONICALIZERS:
+        canonical = canonicalize(uri_str)
+        if canonical:
+            return canonical
+    return uri_str
 
 
 class resolvable_label_resolver:
@@ -33,13 +95,21 @@ class resolvable_label_resolver:
     return an RDF document when accessed using content negotiation. This can work for some of the
     European labels (HVD themes for example) and also for Wikidata.
 
-    Some ontologies (e.g. SNOMED-CT) don't have resolvable URIs, in that case an OWL ontology would
-    have to be loaded first. For these cases, all you'd have to do is override the load_graph
-    function in a subclass to point to the OWL ontology to load. There you could also implement
-    some caching to make sure it doens't keep trying to load 1 million triples for every label.
+    Two extension points cover cases the generic loader can't handle on its own:
+
+    - A host publishes doc pages that don't content-negotiate, but does have a resolvable
+      canonical URI elsewhere (e.g. DPV's GitHub Pages docs vs. its w3id.org PURLs): add a
+      rewrite function to the module-level `URI_CANONICALIZERS` list (see `_canonicalize_dpv_uri`
+      for the pattern). It runs before every fetch and every graph lookup, so it only needs to be
+      registered once.
+    - A host needs bespoke fetching -- custom headers, authentication, a non-standard endpoint --
+      rather than a simple URI rewrite (e.g. Wikidata, BioOntology): add a `_load_*_graph` method
+      following the existing `_load_wikidata_graph`/`_load_bioontology_graph` pattern and register
+      it in the module-level `CUSTOM_LOADERS` list.
     """
 
-    label_graph = Graph()
+    def __init__(self) -> None:
+        self.label_graph = Graph()
 
     def literal_dict_from_graph(self, subject: str | URIRef) -> dict:
         """Turns a Graph into a dictionary with key: language, value: label
@@ -73,8 +143,7 @@ class resolvable_label_resolver:
             Dictionary containing labels with language as key, localized label as value
         """
         lang_dict = dict()
-        if not isinstance(subject, URIRef):
-            subject = URIRef(subject)
+        subject = URIRef(_canonicalize_uri(str(subject)))
 
         # I am aware the dictionary gets overwritten. I am assuming SKOS.prefLabel is the most
         # "authortive" one and therefore it will overwrite the preceding labels.
@@ -208,7 +277,7 @@ class resolvable_label_resolver:
             response.raise_for_status()
 
             # Try parsing with multiple formats
-            for fmt in [None, "xml", "turtle"]:
+            for fmt in [None, "xml", "turtle", "json-ld"]:
                 try:
                     if fmt:
                         self.label_graph.parse(data=response.text, format=fmt)
@@ -239,7 +308,7 @@ class resolvable_label_resolver:
         Graph
             Loaded Graph
         """
-        uri_str = str(uri)
+        uri_str = _canonicalize_uri(str(uri))
 
         if uri_str in SKIP_URIS:
             return self.label_graph
@@ -249,34 +318,24 @@ class resolvable_label_resolver:
             self.label_graph = Graph()
 
         try:
-            parsed_uri = urlparse(uri_str)
-
-            # Try Wikidata special handling
-            if parsed_uri.netloc in ["wikidata.org", "www.wikidata.org"]:
-                if self._load_wikidata_graph(uri_str):
-                    return self.label_graph
-                else:
-                    SKIP_URIS.append(uri_str)
+            for matches, loader_name in CUSTOM_LOADERS:
+                if matches(uri_str):
+                    loader = getattr(self, loader_name)
+                    if loader(uri_str):
+                        return self.label_graph
+                    SKIP_URIS.add(uri_str)
                     return self.label_graph
 
-            # Try BioOntology special handling
-            if re.search(r"bioontology.org", uri_str, re.IGNORECASE):
-                if self._load_bioontology_graph(uri_str):
-                    return self.label_graph
-                else:
-                    SKIP_URIS.append(uri_str)
-                    return self.label_graph
-
-            # Try generic HTTP loading
+            # No custom loader matched, fall back to generic HTTP loading
             if self._load_generic_graph(uri_str):
                 return self.label_graph
             else:
-                SKIP_URIS.append(uri_str)
+                SKIP_URIS.add(uri_str)
                 return self.label_graph
 
         except Exception as e:
             log.warning("Error loading graph from %s: %s", uri_str, str(e))
-            SKIP_URIS.append(uri_str)
+            SKIP_URIS.add(uri_str)
         return self.label_graph
 
     def load_and_translate_uri(self, subject_uri: str | URIRef) -> list[dict[str, str]]:
@@ -292,6 +351,10 @@ class resolvable_label_resolver:
         list[dict[str, str]]
             List of dictionaries in the format of CKAN function `term_translation_update_many`
         """
+        # `load_graph` and `literal_dict_from_graph` each canonicalize `subject_uri`
+        # internally (see `_canonicalize_uri`), so translations still get stored
+        # against the original, un-rewritten `subject_uri` below -- matching
+        # whatever URI the harvested data actually references.
         self.load_graph(subject_uri)
         translation_dict = self.literal_dict_from_graph(subject_uri)
         ckan_translation_list = []
@@ -317,3 +380,20 @@ class resolvable_label_resolver:
                 )
 
         return ckan_translation_list
+
+
+# Ordered list of custom loaders: (matcher, loader method name) pairs for hosts that
+# need bespoke fetching (custom headers, auth, a non-standard endpoint) rather than a
+# simple URI rewrite. `load_graph` calls the loader method of the first matching
+# entry instead of falling back to `_load_generic_graph`. Method names are looked up
+# via `getattr` at call time so this can be declared right after the class body.
+CUSTOM_LOADERS: list[tuple[Callable[[str], bool], str]] = [
+    (
+        lambda uri: urlparse(uri).netloc in {"wikidata.org", "www.wikidata.org"},
+        "_load_wikidata_graph",
+    ),
+    (
+        lambda uri: bool(re.search(r"bioontology\.org", uri, re.IGNORECASE)),
+        "_load_bioontology_graph",
+    ),
+]
