@@ -11,6 +11,7 @@ from rdflib import Graph
 from ckanext.fairdatapoint.resolver import (
     resolvable_label_resolver,
     _canonicalize_dpv_uri,
+    _canonicalize_uri,
 )
 
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
@@ -640,6 +641,30 @@ class TestDpvCanonicalization:
         assert _canonicalize_dpv_uri(
             "https://w3c-cg.github.io/dpv/2.1/dpv/dpv.ttl"
         ) is None
+
+    def test_canonicalize_host_is_case_insensitive(self):
+        """URI hostnames are case-insensitive; an upper-cased GitHub Pages host
+        should still be recognized and rewritten."""
+        assert _canonicalize_dpv_uri(
+            "https://W3C-CG.GITHUB.IO/dpv/2.1/dpv/#ResearchAndDevelopment"
+        ) == "https://w3id.org/dpv#ResearchAndDevelopment"
+
+    def test_canonicalize_uri_wrapper_swallows_malformed_input(self):
+        """A malformed URI (e.g. an invalid IPv6-style host) makes urlparse raise
+        ValueError inside an individual canonicalizer; `_canonicalize_uri` -- the
+        function every caller actually uses -- treats that as "no match" rather
+        than letting the exception escape."""
+        malformed_uri = "http://[invalid"
+        assert _canonicalize_uri(malformed_uri) == malformed_uri
+
+    def test_load_graph_does_not_raise_on_malformed_uri(self):
+        resolver = resolvable_label_resolver()
+        result_graph = resolver.load_graph("http://[invalid")
+        assert isinstance(result_graph, Graph)
+
+    def test_literal_dict_from_graph_does_not_raise_on_malformed_uri(self):
+        resolver = resolvable_label_resolver()
+        assert resolver.literal_dict_from_graph("http://[invalid") == {}
 
     @patch("ckanext.fairdatapoint.resolver.requests.get")
     def test_load_graph_fetches_canonical_uri(self, mock_requests_get):

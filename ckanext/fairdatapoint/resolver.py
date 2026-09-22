@@ -47,7 +47,8 @@ def _canonicalize_dpv_uri(uri_str: str) -> str | None:
         None.
     """
     parsed_uri = urlparse(uri_str)
-    if parsed_uri.netloc not in DPV_DOC_HOSTS:
+    hostname = parsed_uri.hostname
+    if not hostname or hostname.lower() not in DPV_DOC_HOSTS:
         return None
 
     match = DPV_DOC_PATH_RE.match(parsed_uri.path)
@@ -74,10 +75,18 @@ URI_CANONICALIZERS: list[Callable[[str], str | None]] = [
 def _canonicalize_uri(uri_str: str) -> str:
     """Rewrites `uri_str` via the first matching entry in `URI_CANONICALIZERS`.
 
-    Returns `uri_str` unchanged if no canonicalizer matches.
+    Returns `uri_str` unchanged if no canonicalizer matches or if every
+    canonicalizer raises (e.g. `urlparse` rejecting a malformed URI) -- callers
+    can rely on this never raising, so a canonicalizer failing on odd input is
+    just treated the same as "no match" rather than needing to be guarded at
+    every call site.
     """
     for canonicalize in URI_CANONICALIZERS:
-        canonical = canonicalize(uri_str)
+        try:
+            canonical = canonicalize(uri_str)
+        except Exception as e:
+            log.warning("Error canonicalizing URI %s: %s", uri_str, str(e))
+            continue
         if canonical:
             return canonical
     return uri_str
