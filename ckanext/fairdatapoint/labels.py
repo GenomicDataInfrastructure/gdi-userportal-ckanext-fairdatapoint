@@ -39,10 +39,11 @@ PACKAGE_REPLACE_FIELDS = [
     "status",
     "theme",
     "type",
+    "was_generated_by",
 ]
 RESOURCE_REPLACE_FIELDS = [
     "access_rights",
-    "applicable_legislation", 
+    "applicable_legislation",
     "compress_format",
     "conforms_to",
     "format",
@@ -51,19 +52,21 @@ RESOURCE_REPLACE_FIELDS = [
     "license",
     "mimetype",
     "package_format",
+    "rights",
     "status",
 ]
 ACCESS_SERVICES_REPLACE_FIELDS = [
     "access_rights",
-    "applicable_legislation", 
+    "applicable_legislation",
     "conforms_to",
-    "creator", 
+    "creator",
     "format",
-    "hvd_category", 
+    "hvd_category",
     "language",
-    "license", 
-    "publisher", 
-    "theme", 
+    "license",
+    "publisher",
+    "rights",
+    "theme",
 ]
 
 # Languages to resolve labels in
@@ -77,6 +80,7 @@ NESTED_FIELD_TRANSLATIONS = {
     "spatial_coverage": {"uri"},
     "creator": {"publisher_type", "type"},
     "publisher": {"publisher_type", "type"},
+    "was_generated_by": {"dct_type"},
 }
 
 
