@@ -12,6 +12,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.7.1] - 2026-09-23
+
+### Added
+- Merge pull request #166 from GenomicDataInfrastructure/feat/resolve-additional-uri-labels by @Quinten in 1cbc269
+
+
+### Changed
+- Apply suggestion from @sourcery-ai[bot] by @Quinten in 6d0a0b2
+- chore(deps): update dependency setuptools to v84 by @Renovate Bot in 2e8d4c1
+- doc: update CHANGELOG.md for v1.7.0 by @LNDS-Sysadmins in 8343bd4
+
+
+### Fixed
+- fix: address code review comments on DPV URI resolution by @Quinten in 903a5e5
+- fix: resolve DPV vocabulary terms via canonical w3id.org URIs by @Quinten in 26ef4ed
+
+
 ## [v1.7.0] - 2026-09-21
 
 ### Changed
