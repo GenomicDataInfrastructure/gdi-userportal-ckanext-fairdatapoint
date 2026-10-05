@@ -915,3 +915,109 @@ class TestGenericLoaderDestinations:
             assert uri in resolver_module.SKIP_URIS
         finally:
             resolver_module.SKIP_URIS.discard(uri)
+
+
+class TestIcd10Resolver:
+    """ICD-10 URIs are links into the WHO browser; labels come from its public JSON."""
+
+    SUBCATEGORY = "http://icd.who.int/browse10/2019/en#/Y59.0"
+    CATEGORY = "http://icd.who.int/browse10/2019/en#/Y59"
+
+    @pytest.fixture(autouse=True)
+    def _fresh_skip_uris(self, monkeypatch):
+        from ckanext.fairdatapoint import resolver
+
+        monkeypatch.setattr(resolver, "SKIP_URIS", set())
+
+    @staticmethod
+    def _response(json_data=None, text=""):
+        response = MagicMock()
+        response.json.return_value = json_data
+        response.text = text
+        return response
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_subcategory_label_comes_from_its_category_children(self, mock_get):
+        mock_get.return_value = self._response(
+            [
+                {"ID": "Y59.0", "label": "Y59.0 Viral vaccines"},
+                {"ID": "Y59.1", "label": "Y59.1 Rickettsial vaccines"},
+            ]
+        )
+
+        result = resolvable_label_resolver().load_and_translate_uri(self.SUBCATEGORY)
+
+        assert result == [
+            {
+                "term": self.SUBCATEGORY,
+                "term_translation": "Viral vaccines",
+                "lang_code": "en",
+            }
+        ]
+        mock_get.assert_called_once()
+        assert mock_get.call_args[0][0].endswith("/2019/en/JsonGetChildrenConcepts")
+        assert mock_get.call_args[1]["params"]["ConceptId"] == "Y59"
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_category_label_comes_from_the_narrowest_block(self, mock_get):
+        page = "Chapter XX (V01-Y98) Complications (Y40-Y84) Drugs (Y40-Y59) Y59"
+        mock_get.side_effect = [
+            self._response(text=page),
+            self._response(
+                [
+                    {"ID": "Y58", "label": "Y58 Bacterial vaccines"},
+                    {"ID": "Y59", "label": "Y59 Other and unspecified vaccines"},
+                ]
+            ),
+        ]
+
+        result = resolvable_label_resolver().load_and_translate_uri(self.CATEGORY)
+
+        assert [r["term_translation"] for r in result] == [
+            "Other and unspecified vaccines"
+        ]
+        assert mock_get.call_args_list[0][0][0].endswith("/GetConcept")
+        assert mock_get.call_args_list[1][1]["params"]["ConceptId"] == "Y40-Y59"
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_label_uses_the_language_of_the_uri(self, mock_get):
+        mock_get.return_value = self._response(
+            [{"ID": "Y59.0", "label": "Y59.0 Virale vaccins"}]
+        )
+        uri = "http://icd.who.int/browse10/2019/nl#/Y59.0"
+
+        result = resolvable_label_resolver().load_and_translate_uri(uri)
+
+        assert result == [
+            {"term": uri, "term_translation": "Virale vaccins", "lang_code": "nl"}
+        ]
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_unknown_code_gives_no_translation(self, mock_get):
+        mock_get.return_value = self._response(
+            [{"ID": "Y59.1", "label": "Y59.1 Rickettsial vaccines"}]
+        )
+
+        assert resolvable_label_resolver().load_and_translate_uri(self.SUBCATEGORY) == []
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_request_failure_gives_no_translation_and_is_not_retried(self, mock_get):
+        mock_get.side_effect = Exception("boom")
+        resolver = resolvable_label_resolver()
+
+        assert resolver.load_and_translate_uri(self.SUBCATEGORY) == []
+        assert resolver.load_and_translate_uri(self.SUBCATEGORY) == []
+        assert mock_get.call_count == 1
+
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "http://icd.who.int/browse10/2019/en",
+            "http://example.com/browse10/2019/en#/Y59.0",
+            "http://icd.who.int/browse10/2019/en#/not-a-code",
+        ],
+    )
+    def test_other_uris_are_not_routed_to_the_icd_loader(self, uri):
+        from ckanext.fairdatapoint.resolver import ICD10_URI_RE
+
+        assert not ICD10_URI_RE.match(uri)

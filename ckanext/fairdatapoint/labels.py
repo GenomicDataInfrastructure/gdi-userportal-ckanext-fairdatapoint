@@ -75,7 +75,8 @@ RESOLVE_LANGUAGES = ("en", "nl")
 
 NESTED_FIELD_TRANSLATIONS = {
     "qualified_relation": {"role"},
-    "qualified_attribution": {"role"},
+    "qualified_attribution": {"role", "agent"},
+    "agent": {"type"},
     "quality_annotation": {"body"},
     "spatial_coverage": {"uri"},
     "creator": {"publisher_type", "type", "country"},

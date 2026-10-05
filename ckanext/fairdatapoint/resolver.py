@@ -10,7 +10,7 @@ import socket
 from typing import Callable
 
 import requests
-from rdflib import RDFS, SDO, SKOS, Graph, URIRef
+from rdflib import RDFS, SDO, SKOS, Graph, Literal, URIRef
 from urllib.parse import urljoin, urlparse
 from ckanext.fairdatapoint.harvesters.config import get_bioportal_api_key
 
@@ -105,6 +105,15 @@ def _get_public(url: str, headers: dict[str, str]) -> requests.Response:
         url = urljoin(url, location)
 
     raise UnsafeUriError(f"More than {MAX_REDIRECTS} redirects")
+
+# ICD-10 codes are referenced as links into the public WHO ICD-10 browser, with the code in
+# the URI fragment, e.g. http://icd.who.int/browse10/2019/en#/Y59.0
+ICD10_BROWSER_BASE = "https://icd.who.int/browse10"
+ICD10_URI_RE = re.compile(
+    r"^https?://icd\.who\.int/browse10/(?P<release>\d{4})/(?P<lang>[a-z]{2})/?#/(?P<code>[A-Z][0-9A-Z.\-]*)$"
+)
+ICD10_CATEGORY_RE = re.compile(r"[A-Z]\d{2}")
+ICD10_BLOCK_RANGE_RE = re.compile(r"\(([A-Z]\d{2})-([A-Z]\d{2})\)")
 
 # DPV is published as versioned, non-content-negotiable GitHub Pages docs (the org
 # also moved from w3c.github.io to w3c-cg.github.io), but every term also has a
@@ -314,7 +323,7 @@ class resolvable_label_resolver:
         if "/ontology/" not in uri:
             log.warning("BioOntology URI does not contain '/ontology/': %s", uri)
             return False
-        
+
         try:
             ontology = uri.split("/ontology/")[1].split("/")[0]
             encoded_concept = requests.utils.quote(uri, safe='')
@@ -339,6 +348,99 @@ class resolvable_label_resolver:
                 return False
         except Exception as e:
             log.warning("Error loading BioOntology URI %s: %s", uri, str(e))
+            return False
+
+    def _icd10_get(self, release: str, lang: str, endpoint: str, concept_id: str):
+        """GET an endpoint of the public WHO ICD-10 browser."""
+        response = requests.get(
+            f"{ICD10_BROWSER_BASE}/{release}/{lang}/{endpoint}",
+            params={
+                "ConceptId": concept_id,
+                "useHtml": "false",
+                "showAdoptedChildren": "true",
+            },
+            headers={"User-Agent": "ckanext-fairdatapoint/harvester"},
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        return response
+
+    def _icd10_parent_id(self, release: str, lang: str, code: str) -> str | None:
+        """Find the concept that lists `code` as a child in the ICD-10 browser tree.
+
+        A subcategory (A00.1) is listed under its category (A00). A category is listed
+        under the narrowest block (A00-A09) that contains it, which is read from the
+        block ranges on the concept's own page.
+        """
+        if "." in code:
+            return code.split(".")[0]
+        if not ICD10_CATEGORY_RE.fullmatch(code):
+            return None
+
+        page = self._icd10_get(release, lang, "GetConcept", code).text
+        blocks = [
+            (first, last)
+            for first, last in ICD10_BLOCK_RANGE_RE.findall(page)
+            if first <= code <= last
+        ]
+        if not blocks:
+            return None
+
+        def span(block: tuple[str, str]) -> int:
+            first, last = block
+            return (ord(last[0]) * 100 + int(last[1:])) - (
+                ord(first[0]) * 100 + int(first[1:])
+            )
+
+        first, last = min(blocks, key=span)
+        return f"{first}-{last}"
+
+    def _load_icd10_graph(self, uri: str) -> bool:
+        """Load the label of an ICD-10 code from the public WHO ICD-10 browser.
+
+        ICD-10 URIs like http://icd.who.int/browse10/2019/en#/Y59.0 are links into a
+        JavaScript application, so they do not content-negotiate (and the code lives in
+        the fragment, which is never sent to the server). WHO's official ICD API needs
+        an OAuth token, but the browser itself serves unauthenticated JSON: the
+        children of a concept are listed as {"ID": "Y59.0", "label": "Y59.0 Viral
+        vaccines"}. The label is taken from the parent's children.
+
+        Parameters
+        ----------
+        uri : str
+            ICD-10 browser URI, with the code in the fragment
+
+        Returns
+        -------
+        bool
+            True if the label was added, False otherwise
+        """
+        match = ICD10_URI_RE.match(uri)
+        if not match:
+            return False
+
+        release, lang, code = match["release"], match["lang"], match["code"]
+        try:
+            parent_id = self._icd10_parent_id(release, lang, code)
+            if not parent_id:
+                return False
+
+            children = self._icd10_get(
+                release, lang, "JsonGetChildrenConcepts", parent_id
+            ).json()
+            for child in children:
+                if child.get("ID") == code:
+                    label = str(child.get("label", ""))
+                    # The browser prefixes the label with the code itself
+                    label = label.removeprefix(f"{code} ").strip()
+                    if label:
+                        self.label_graph.add(
+                            (URIRef(uri), RDFS.label, Literal(label, lang=lang))
+                        )
+                        return True
+            return False
+        except Exception as e:
+            log.warning("Error loading ICD-10 URI %s: %s", uri, str(e))
             return False
 
     def _load_generic_graph(self, uri: str) -> bool:
@@ -489,5 +591,9 @@ CUSTOM_LOADERS: list[tuple[Callable[[str], bool], str]] = [
     (
         lambda uri: bool(re.search(r"bioontology\.org", uri, re.IGNORECASE)),
         "_load_bioontology_graph",
+    ),
+    (
+        lambda uri: bool(ICD10_URI_RE.match(uri)),
+        "_load_icd10_graph",
     ),
 ]
