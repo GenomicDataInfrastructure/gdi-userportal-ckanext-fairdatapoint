@@ -70,9 +70,9 @@ class TestProcessors:
         ]
         assert actual_dataset["creator"] == [
             {
-                "country": "",
+                "country": [],
                 "email": "",
-                "identifier": "",
+                "identifier": [],
                 "name": "",
                 "type": "",
                 "uri": "https://orcid.org/0000-0002-0180-3636",
@@ -81,9 +81,9 @@ class TestProcessors:
         ]
         assert actual_dataset["publisher"] == [
             {
-                "country": "",
+                "country": [],
                 "email": "",
-                "identifier": "",
+                "identifier": [],
                 "name": "",
                 "type": "",
                 "uri": "https://opal.health-ri.nl/pub",
@@ -125,9 +125,9 @@ class TestProcessors:
         assert actual["license_id"] == ""
         assert actual["publisher"] == [
             {
-                "country": "",
+                "country": [],
                 "email": "",
-                "identifier": "",
+                "identifier": [],
                 "name": "Automatic",
                 "type": "",
                 "uri": "",
