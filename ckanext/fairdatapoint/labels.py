@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import logging
+import time
+from contextvars import ContextVar
 from urllib.parse import urlparse
 
 from ckan.plugins import toolkit
@@ -69,6 +71,100 @@ ACCESS_SERVICES_REPLACE_FIELDS = [
     "theme",
 ]
 
+# Languages a source turned out not to have a label in, per term, for the harvest job that is
+# running: a term that is missing a language in CKAN is fetched again for every dataset it
+# occurs in, so without this a source that has no (say) Dutch label would be asked for it over
+# and over. Entries are kept per harvest job and dropped as soon as that job is no longer
+# running, so the cache never outlives the harvest of one source.
+_unavailable_languages: dict[str, dict[str, set[str]]] = {}
+_current_run: ContextVar[str | None] = ContextVar("fairdatapoint_label_run", default=None)
+# Seconds between two checks of which harvest jobs are still running
+RUN_CHECK_INTERVAL = 30
+_last_run_check = 0.0
+
+
+def start_label_run(run_id: str | None) -> None:
+    """Marks the harvest job (run) the labels are resolved for from now on
+
+    Forgets what is cached for runs that have finished in the meantime. Without a run, nothing
+    is cached.
+
+    Parameters
+    ----------
+    run_id : str | None
+        Id of the harvest job that is being harvested
+    """
+    _forget_finished_runs(force=True)
+    _current_run.set(run_id)
+
+
+def _forget_finished_runs(force: bool = False) -> None:
+    """Drops the cache of every harvest job that is not running anymore
+
+    A job is marked finished by another process than the one harvesting it, so the database is
+    asked rather than relying on a call at the end of the harvest. Unless forced, it is asked
+    at most once every `RUN_CHECK_INTERVAL` seconds.
+    """
+    global _last_run_check
+
+    if not _unavailable_languages:
+        return
+
+    now = time.monotonic()
+    if not force and now - _last_run_check < RUN_CHECK_INTERVAL:
+        return
+    _last_run_check = now
+
+    try:
+        from ckan import model
+        from ckanext.harvest.model import HarvestJob
+
+        running = {
+            row[0]
+            for row in model.Session.query(HarvestJob.id)
+            .filter(HarvestJob.id.in_(list(_unavailable_languages)))
+            .filter(HarvestJob.status == "Running")
+        }
+    except Exception as e:
+        log.warning("Could not check which harvest jobs are running: %s", e)
+        return
+
+    for run_id in set(_unavailable_languages) - running:
+        del _unavailable_languages[run_id]
+
+
+def _without_unavailable_languages(
+        missing_languages: dict[str, set[str]]
+) -> dict[str, set[str]]:
+    """Leaves out the languages that this run already found the source does not have"""
+    unavailable = _unavailable_languages.get(_current_run.get())
+    if not unavailable:
+        return missing_languages
+
+    remaining = {
+        term: languages - unavailable.get(term, set())
+        for term, languages in missing_languages.items()
+    }
+    return {term: languages for term, languages in remaining.items() if languages}
+
+
+def _remember_unavailable_languages(
+        missing_languages: dict[str, set[str]], translations: list[dict[str, str]]
+) -> None:
+    """Remembers, for this run, the missing languages the source did not return"""
+    run_id = _current_run.get()
+    if run_id is None:
+        return
+
+    for term, languages in missing_languages.items():
+        returned = {t.get("lang_code") for t in translations if t.get("term") == term}
+        not_returned = languages - returned
+        if not_returned:
+            _unavailable_languages.setdefault(run_id, {}).setdefault(term, set()).update(
+                not_returned
+            )
+
+
 # Languages to resolve labels in
 # TODO language codes should be dynamic
 RESOLVE_LANGUAGES = ("en", "nl")
@@ -102,7 +198,14 @@ def resolve_labels(package_dict: dict) -> int:
     translation_list = []
 
     total_terms = terms_in_package_dict(package_dict)
-    missing_languages = get_missing_languages(total_terms)
+    _forget_finished_runs()
+    all_missing_languages = get_missing_languages(total_terms)
+    missing_languages = _without_unavailable_languages(all_missing_languages)
+    if len(missing_languages) < len(all_missing_languages):
+        log.debug(
+            "Not asking again for %d term(s) the source has no (more) languages for in this run",
+            len(all_missing_languages) - len(missing_languages),
+        )
 
     if missing_languages:
         resolver = resolvable_label_resolver()
@@ -110,6 +213,8 @@ def resolve_labels(package_dict: dict) -> int:
         for term in missing_languages:
             extra_translations = resolver.load_and_translate_uri(term)
             translation_list.extend(extra_translations)
+
+        _remember_unavailable_languages(missing_languages, translation_list)
 
         # Check if there is actually translations in the list
         if translation_list:

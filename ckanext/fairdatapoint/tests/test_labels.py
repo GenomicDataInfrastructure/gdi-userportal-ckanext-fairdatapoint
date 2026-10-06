@@ -7,12 +7,14 @@ from unittest.mock import patch
 import pytest
 from rdflib import URIRef
 
+from ckanext.fairdatapoint import labels
 from ckanext.fairdatapoint.labels import (
     _collect_values_for_field,
     _is_absolute_uri,
     get_list_unresolved_terms,
     get_missing_languages,
     resolve_labels,
+    start_label_run,
     terms_in_package_dict,
 )
 
@@ -559,3 +561,151 @@ class TestResolveLabelsMissingLanguages:
         get_missing_languages.return_value = {}
 
         assert resolve_labels({"creator": [{"country": [self.TERM]}]}) == -1
+
+
+class TestUnavailableLanguagesCache:
+    """A language the source does not have is only asked for once per harvest run, and
+    forgotten when that run is over."""
+
+    TERM = "http://publications.europa.eu/resource/authority/country/DEU"
+    ENGLISH_ONLY = [{"term": TERM, "term_translation": "Germany", "lang_code": "en"}]
+
+    @pytest.fixture(autouse=True)
+    def clean_cache(self):
+        labels._unavailable_languages.clear()
+        labels._current_run.set(None)
+        labels._last_run_check = 0.0
+        yield
+        labels._unavailable_languages.clear()
+        labels._current_run.set(None)
+
+    @staticmethod
+    def _resolve(term, missing, load_and_translate_uri):
+        with patch(
+            "ckanext.fairdatapoint.labels.get_missing_languages",
+            return_value=missing,
+        ), patch("ckan.plugins.toolkit.get_action"), patch.object(
+            labels, "_forget_finished_runs"
+        ):
+            return resolve_labels({"theme": term})
+
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    def test_a_language_the_source_lacks_is_asked_for_once_per_run(self, load):
+        load.return_value = self.ENGLISH_ONLY
+        start_label_run("job-1")
+
+        self._resolve(self.TERM, {self.TERM: {"nl"}}, load)
+        self._resolve(self.TERM, {self.TERM: {"nl"}}, load)
+        self._resolve(self.TERM, {self.TERM: {"nl"}}, load)
+
+        assert load.call_count == 1
+
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    def test_only_the_unavailable_language_is_skipped(self, load):
+        load.return_value = self.ENGLISH_ONLY
+        start_label_run("job-1")
+        self._resolve(self.TERM, {self.TERM: {"nl"}}, load)
+
+        # another language of the same term is still asked for
+        self._resolve(self.TERM, {self.TERM: {"nl", "en"}}, load)
+
+        assert load.call_count == 2
+
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    def test_nothing_is_cached_without_a_run(self, load):
+        load.return_value = self.ENGLISH_ONLY
+
+        self._resolve(self.TERM, {self.TERM: {"nl"}}, load)
+        self._resolve(self.TERM, {self.TERM: {"nl"}}, load)
+
+        assert load.call_count == 2
+        assert labels._unavailable_languages == {}
+
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    def test_a_run_does_not_use_what_another_run_found(self, load):
+        load.return_value = self.ENGLISH_ONLY
+        start_label_run("job-1")
+        self._resolve(self.TERM, {self.TERM: {"nl"}}, load)
+
+        start_label_run("job-2")
+        self._resolve(self.TERM, {self.TERM: {"nl"}}, load)
+
+        assert load.call_count == 2
+
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    def test_a_language_that_was_returned_is_not_remembered_as_unavailable(self, load):
+        load.return_value = self.ENGLISH_ONLY + [
+            {"term": self.TERM, "term_translation": "Duitsland", "lang_code": "nl"}
+        ]
+        start_label_run("job-1")
+
+        self._resolve(self.TERM, {self.TERM: {"nl"}}, load)
+
+        assert labels._unavailable_languages == {}
+
+    @patch("ckan.model.Session")
+    def test_runs_that_are_not_running_anymore_are_forgotten(self, session):
+        labels._unavailable_languages.update(
+            {"job-1": {self.TERM: {"nl"}}, "job-2": {self.TERM: {"nl"}}}
+        )
+        # only job-2 is still running
+        session.query.return_value.filter.return_value.filter.return_value = [("job-2",)]
+
+        labels._forget_finished_runs(force=True)
+
+        assert list(labels._unavailable_languages) == ["job-2"]
+
+    @patch("ckan.model.Session")
+    def test_starting_a_run_forgets_finished_runs(self, session):
+        labels._unavailable_languages["job-1"] = {self.TERM: {"nl"}}
+        session.query.return_value.filter.return_value.filter.return_value = []
+
+        start_label_run("job-2")
+
+        assert labels._unavailable_languages == {}
+
+    @patch("ckan.model.Session")
+    def test_the_check_is_throttled(self, session):
+        labels._unavailable_languages["job-1"] = {self.TERM: {"nl"}}
+        session.query.return_value.filter.return_value.filter.return_value = []
+
+        labels._forget_finished_runs()
+        labels._unavailable_languages["job-1"] = {self.TERM: {"nl"}}
+        labels._forget_finished_runs()
+
+        assert session.query.call_count == 1
+        assert "job-1" in labels._unavailable_languages
+
+    @patch("ckan.model.Session")
+    def test_the_cache_is_kept_when_the_database_cannot_be_asked(self, session):
+        labels._unavailable_languages["job-1"] = {self.TERM: {"nl"}}
+        session.query.side_effect = RuntimeError("database down")
+
+        labels._forget_finished_runs(force=True)
+
+        assert "job-1" in labels._unavailable_languages
+
+
+def test_the_dcat_harvester_hands_over_its_harvest_job():
+    from unittest.mock import MagicMock
+
+    from ckanext.fairdatapoint.harvesters import FairDataPointCivityHarvester
+
+    labels._current_run.set(None)
+    job = MagicMock(id="job-42")
+
+    url, errors = FairDataPointCivityHarvester().before_download("http://example.com", job)
+
+    assert (url, errors) == ("http://example.com", [])
+    assert labels._current_run.get() == "job-42"
+    labels._current_run.set(None)
