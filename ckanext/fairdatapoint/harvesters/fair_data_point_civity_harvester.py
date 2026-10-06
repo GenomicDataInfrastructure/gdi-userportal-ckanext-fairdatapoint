@@ -18,7 +18,7 @@ from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider imp
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
     FairDataPointRecordToPackageConverter,
 )
-from ckanext.fairdatapoint.labels import start_label_run
+from ckanext.fairdatapoint.run_scope import start_run
 
 PROFILE = "profile"
 HARVEST_CATALOG = "harvest_catalogs"
@@ -36,7 +36,7 @@ class FairDataPointCivityHarvester(CivityHarvester):
     implements(IDCATRDFHarvester, inherit=True)
 
     def before_download(self, url, harvest_job):
-        start_label_run(harvest_job.id)
+        start_run(harvest_job.id)
         return url, []
 
     def setup_record_provider(self, harvest_url, harvest_config_dict):

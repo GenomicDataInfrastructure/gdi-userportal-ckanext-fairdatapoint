@@ -21,6 +21,8 @@ from ckanext.fairdatapoint.resolver import (
 
     _canonicalize_wikidata_uri,
 )
+from ckanext.fairdatapoint import resolver as resolver_module
+from ckanext.fairdatapoint import run_scope
 
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
 PUBLIC_ADDRESS = "93.184.216.34"
@@ -1089,3 +1091,81 @@ class TestWikidataCanonicalization:
 
         assert by_page_uri
         assert by_page_uri == by_entity_uri
+
+
+class TestSkipUrisPerHarvestJob:
+    """URIs that failed to load are not tried again during one harvest job, and forgotten
+    with it."""
+
+    URI = "http://purl.bioontology.org/ontology/ICD10CM/U07.1"
+
+    @pytest.fixture(autouse=True)
+    def clean_state(self):
+        run_scope._run_stores.clear()
+        run_scope._current_run.set(None)
+        resolver_module.SKIP_URIS.clear()
+        yield
+        run_scope._run_stores.clear()
+        run_scope._current_run.set(None)
+        resolver_module.SKIP_URIS.clear()
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key", return_value=None)
+    def test_a_failed_uri_is_kept_in_the_set_of_the_harvest_job(self, _api_key, _get):
+        run_scope.start_run("job-1")
+
+        resolvable_label_resolver().load_graph(self.URI)
+
+        assert run_scope._run_stores["job-1"][resolver_module.SKIP_URIS_STORE] == {self.URI}
+        assert self.URI not in resolver_module.SKIP_URIS
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key", return_value=None)
+    def test_a_failed_uri_is_not_tried_again_in_the_same_job(self, _api_key, _get):
+        run_scope.start_run("job-1")
+        resolver = resolvable_label_resolver()
+
+        with patch.object(
+            resolvable_label_resolver, "_load_bioontology_graph", return_value=False
+        ) as loader:
+            resolver.load_graph(self.URI)
+            resolver.load_graph(self.URI)
+            resolvable_label_resolver().load_graph(self.URI)
+
+        assert loader.call_count == 1
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key", return_value=None)
+    def test_another_job_tries_a_failed_uri_again(self, _api_key, _get):
+        run_scope.start_run("job-1")
+        with patch.object(
+            resolvable_label_resolver, "_load_bioontology_graph", return_value=False
+        ) as loader:
+            resolvable_label_resolver().load_graph(self.URI)
+
+            run_scope.start_run("job-2")
+            resolvable_label_resolver().load_graph(self.URI)
+
+        assert loader.call_count == 2
+
+    @patch("ckan.model.Session")
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key", return_value=None)
+    def test_the_set_is_dropped_when_the_job_is_not_running_anymore(
+        self, _api_key, _get, session
+    ):
+        run_scope.start_run("job-1")
+        resolvable_label_resolver().load_graph(self.URI)
+        session.query.return_value.filter.return_value.filter.return_value = []
+
+        run_scope.forget_finished_runs(force=True)
+
+        assert run_scope._run_stores == {}
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key", return_value=None)
+    def test_without_a_harvest_job_the_process_wide_set_is_used(self, _api_key, _get):
+        resolvable_label_resolver().load_graph(self.URI)
+
+        assert self.URI in resolver_module.SKIP_URIS
+        assert run_scope._run_stores == {}

@@ -13,6 +13,7 @@ import requests
 from rdflib import RDFS, SDO, SKOS, Graph, Literal, URIRef
 from urllib.parse import urljoin, urlparse
 from ckanext.fairdatapoint.harvesters.config import get_bioportal_api_key
+from ckanext.fairdatapoint.run_scope import run_store
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +21,11 @@ log = logging.getLogger(__name__)
 # Default language for a label if it is not defined (Literal without language tag)
 DEFAULT_LABEL_LANG = "en"
 LANG_LIST = ["en", "nl"]
+# URIs that could not be loaded and are not tried again. Per harvest job (see `run_scope`), so
+# it is dropped with the job; only when no harvest job is known this set, which lives as long
+# as the process, is used.
 SKIP_URIS: set[str] = set()
+SKIP_URIS_STORE = "skip_uris"
 REQUEST_TIMEOUT = 100  # seconds
 MAX_REDIRECTS = 5
 REDIRECT_STATUS_CODES = (301, 302, 303, 307, 308)
@@ -200,6 +205,12 @@ URI_CANONICALIZERS: list[Callable[[str], str | None]] = [
     _canonicalize_dpv_uri,
     _canonicalize_wikidata_uri,
 ]
+
+
+def _skip_uris() -> set[str]:
+    """The set of URIs not to try again: the one of the current harvest job if there is one"""
+    run_skip_uris = run_store(SKIP_URIS_STORE, set)
+    return SKIP_URIS if run_skip_uris is None else run_skip_uris
 
 
 def _canonicalize_uri(uri_str: str) -> str:
@@ -541,8 +552,9 @@ class resolvable_label_resolver:
             Loaded Graph
         """
         uri_str = _canonicalize_uri(str(uri))
+        skip_uris = _skip_uris()
 
-        if uri_str in SKIP_URIS:
+        if uri_str in skip_uris:
             return self.label_graph
 
         if empty_graph:
@@ -555,19 +567,19 @@ class resolvable_label_resolver:
                     loader = getattr(self, loader_name)
                     if loader(uri_str):
                         return self.label_graph
-                    SKIP_URIS.add(uri_str)
+                    skip_uris.add(uri_str)
                     return self.label_graph
 
             # No custom loader matched, fall back to generic HTTP loading
             if self._load_generic_graph(uri_str):
                 return self.label_graph
             else:
-                SKIP_URIS.add(uri_str)
+                skip_uris.add(uri_str)
                 return self.label_graph
 
         except Exception as e:
             log.warning("Error loading graph from %s: %s", uri_str, str(e))
-            SKIP_URIS.add(uri_str)
+            skip_uris.add(uri_str)
         return self.label_graph
 
     def load_and_translate_uri(self, subject_uri: str | URIRef) -> list[dict[str, str]]:
