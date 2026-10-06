@@ -156,6 +156,41 @@ def _canonicalize_dpv_uri(uri_str: str) -> str | None:
     return canonical
 
 
+# Wikidata has two URI forms for the same item: the page URI https://www.wikidata.org/wiki/Q123
+# (what people copy from the browser) and the entity URI http://www.wikidata.org/entity/Q123,
+# which is the subject of the RDF served by Special:EntityData. Labels are only found under the
+# entity URI, so page URIs are rewritten to it.
+WIKIDATA_HOSTS = {"wikidata.org", "www.wikidata.org"}
+WIKIDATA_PAGE_PATH_RE = re.compile(r"^/wiki/(?:Property:|Lexeme:)?(?P<id>[QPL][0-9]+)$")
+
+
+def _canonicalize_wikidata_uri(uri_str: str) -> str | None:
+    """Rewrites a Wikidata page URI (/wiki/Q123) to its entity URI (/entity/Q123).
+
+    Parameters
+    ----------
+    uri_str : str
+        URI to check and possibly rewrite
+
+    Returns
+    -------
+    str | None
+        The canonical http://www.wikidata.org/entity/... URI if `uri_str` is a Wikidata
+        page URI of an item, property or lexeme, otherwise None (including for URIs that
+        already are entity URIs).
+    """
+    parsed_uri = urlparse(uri_str)
+    hostname = parsed_uri.hostname
+    if not hostname or hostname.lower() not in WIKIDATA_HOSTS:
+        return None
+
+    match = WIKIDATA_PAGE_PATH_RE.match(parsed_uri.path)
+    if not match:
+        return None
+
+    return f"http://www.wikidata.org/entity/{match.group('id')}"
+
+
 # Ordered list of URI canonicalizers: pure rewrites applied, in order, before a URI
 # is fetched or matched against a graph. Add an entry here when a host publishes doc
 # pages that don't content-negotiate but does have a resolvable canonical URI
@@ -163,6 +198,7 @@ def _canonicalize_dpv_uri(uri_str: str) -> str | None:
 # canonicalizer to return a non-None result wins.
 URI_CANONICALIZERS: list[Callable[[str], str | None]] = [
     _canonicalize_dpv_uri,
+    _canonicalize_wikidata_uri,
 ]
 
 

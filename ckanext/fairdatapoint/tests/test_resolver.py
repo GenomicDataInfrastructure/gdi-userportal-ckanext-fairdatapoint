@@ -17,6 +17,9 @@ from ckanext.fairdatapoint.resolver import (
     _canonicalize_uri,
     _check_public_destination,
     _get_public,
+
+
+    _canonicalize_wikidata_uri,
 )
 
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
@@ -1021,3 +1024,68 @@ class TestIcd10Resolver:
         from ckanext.fairdatapoint.resolver import ICD10_URI_RE
 
         assert not ICD10_URI_RE.match(uri)
+
+
+class TestWikidataCanonicalization:
+    """Tests for the Wikidata page URI -> entity URI canonicalizer and its wiring
+    into `literal_dict_from_graph`."""
+
+    wikidata_data_catalog_path = Path(
+        TEST_DATA_DIRECTORY, "wikidata_data_catalog_entry.ttl"
+    )
+
+    def test_canonicalize_page_uri(self):
+        assert _canonicalize_wikidata_uri(
+            "http://www.wikidata.org/wiki/Q327718"
+        ) == "http://www.wikidata.org/entity/Q327718"
+
+    def test_canonicalize_https_page_uri(self):
+        assert _canonicalize_wikidata_uri(
+            "https://www.wikidata.org/wiki/Q327718"
+        ) == "http://www.wikidata.org/entity/Q327718"
+
+    def test_canonicalize_property_page_uri(self):
+        assert _canonicalize_wikidata_uri(
+            "http://www.wikidata.org/wiki/Property:P494"
+        ) == "http://www.wikidata.org/entity/P494"
+
+    def test_canonicalize_ignores_entity_uri(self):
+        assert _canonicalize_wikidata_uri(
+            "http://www.wikidata.org/entity/Q327718"
+        ) is None
+
+    def test_canonicalize_ignores_unrelated_host(self):
+        assert _canonicalize_wikidata_uri(
+            "http://www.example.com/wiki/Q327718"
+        ) is None
+
+    def test_canonicalize_ignores_non_entity_pages(self):
+        assert _canonicalize_wikidata_uri(
+            "https://www.wikidata.org/wiki/Special:EntityData/Q327718"
+        ) is None
+
+    def test_canonicalize_host_is_case_insensitive(self):
+        assert _canonicalize_wikidata_uri(
+            "http://WWW.WIKIDATA.ORG/wiki/Q327718"
+        ) == "http://www.wikidata.org/entity/Q327718"
+
+    def test_canonicalize_uri_wrapper_rewrites_page_uri(self):
+        assert _canonicalize_uri(
+            "http://www.wikidata.org/wiki/Q29937289"
+        ) == "http://www.wikidata.org/entity/Q29937289"
+
+    def test_labels_are_found_for_a_page_uri(self):
+        """The graph describes the entity URI; looking labels up with the page URI of
+        the same item must find them."""
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph().parse(self.wikidata_data_catalog_path)
+
+        by_page_uri = resolver.literal_dict_from_graph(
+            "http://www.wikidata.org/wiki/Q29937289"
+        )
+        by_entity_uri = resolver.literal_dict_from_graph(
+            "http://www.wikidata.org/entity/Q29937289"
+        )
+
+        assert by_page_uri
+        assert by_page_uri == by_entity_uri
