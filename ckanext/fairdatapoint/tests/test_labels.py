@@ -400,6 +400,37 @@ class TestTermsInPackageDictWithResources:
         }
         assert set(result) == expected_uris
 
+    def test_terms_in_package_dict_with_qualified_attribution_agent(self):
+        """An agent of a qualified attribution is an agent like a publisher or a
+        creator: its publisher_type, type and country(ies) are all collected."""
+        package_dict = {
+            "qualified_attribution": [
+                {
+                    "role": "http://example.com/role",
+                    "agent": [
+                        {
+                            "name": "Example Agent",
+                            "publisher_type": ["http://example.com/agent-publisher-type"],
+                            "type": "http://example.com/agent-type",
+                            "country": [
+                                "http://publications.europa.eu/resource/authority/country/DEU",
+                                "http://publications.europa.eu/resource/authority/country/FRA",
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        result = terms_in_package_dict(package_dict)
+        expected_uris = {
+            "http://example.com/role",
+            "http://example.com/agent-publisher-type",
+            "http://example.com/agent-type",
+            "http://publications.europa.eu/resource/authority/country/DEU",
+            "http://publications.europa.eu/resource/authority/country/FRA",
+        }
+        assert set(result) == expected_uris
+
     def test_terms_in_package_dict_with_resource_access_service_empty_list(self):
         """Test terms_in_package_dict with resource where access_service is empty list"""
         package_dict = {
