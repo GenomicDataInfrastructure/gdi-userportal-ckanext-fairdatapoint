@@ -182,7 +182,7 @@ def resolve_labels(package_dict: dict) -> int:
             if "success" not in updated_labels:
                 log.error("Error updating labels: %s", updated_labels)
             else:
-                return len(translation_list)
+                return len(filtered_translation_list)
         else:
             return 0
     else:

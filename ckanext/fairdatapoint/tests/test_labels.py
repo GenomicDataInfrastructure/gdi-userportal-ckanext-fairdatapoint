@@ -140,9 +140,10 @@ def test_resolve_label_happy_flow(
     expected_filtered_translation_list = translation_list[1:]
 
     load_and_translate_uri.return_value = translation_list
-    get_action.return_value.return_value = {"success": "3 updated succesfully"}
+    get_action.return_value.return_value = {"success": "2 updated succesfully"}
 
-    assert resolve_labels({"theme": "http://www.wikidata.org/entity/Q29937289"}) == 3
+    # three were fetched, the two of the missing languages are stored and counted
+    assert resolve_labels({"theme": "http://www.wikidata.org/entity/Q29937289"}) == 2
 
     get_action.return_value.assert_called_once_with(
         {"ignore_auth": True, "defer_commit": True},
@@ -535,12 +536,14 @@ class TestResolveLabelsMissingLanguages:
         load_and_translate_uri.return_value = self.FETCHED
         get_action.return_value.return_value = {"success": "1 updated succesfully"}
 
-        resolve_labels({"creator": [{"country": [self.TERM]}]})
+        stored = resolve_labels({"creator": [{"country": [self.TERM]}]})
 
         get_action.return_value.assert_called_once_with(
             {"ignore_auth": True, "defer_commit": True},
             {"data": [self.FETCHED[1]]},
         )
+        # the number of stored labels, not of the fetched ones
+        assert stored == 1
 
     @patch("ckanext.fairdatapoint.labels.get_missing_languages")
     @patch(
