@@ -1023,9 +1023,15 @@ class TestIcd10Resolver:
         ],
     )
     def test_other_uris_are_not_routed_to_the_icd_loader(self, uri):
-        from ckanext.fairdatapoint.resolver import ICD10_URI_RE
+        resolver = resolvable_label_resolver()
 
-        assert not ICD10_URI_RE.match(uri)
+        with patch.object(resolver, "_load_icd10_graph") as icd_loader, patch.object(
+            resolver, "_load_generic_graph", return_value=True
+        ) as generic_loader:
+            resolver.load_graph(uri)
+
+        icd_loader.assert_not_called()
+        generic_loader.assert_called_once_with(uri)
 
 
 class TestWikidataCanonicalization:
