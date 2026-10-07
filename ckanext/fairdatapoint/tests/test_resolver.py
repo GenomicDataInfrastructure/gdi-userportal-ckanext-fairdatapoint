@@ -1066,6 +1066,11 @@ class TestWikidataCanonicalization:
             "https://www.wikidata.org/wiki/Special:EntityData/Q327718"
         ) is None
 
+    def test_canonicalize_ignores_non_ascii_digits(self):
+        assert _canonicalize_wikidata_uri(
+            "https://www.wikidata.org/wiki/Q٣٢١"
+        ) is None
+
     def test_canonicalize_host_is_case_insensitive(self):
         assert _canonicalize_wikidata_uri(
             "http://WWW.WIKIDATA.ORG/wiki/Q327718"

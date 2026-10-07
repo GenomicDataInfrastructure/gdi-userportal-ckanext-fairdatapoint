@@ -166,7 +166,7 @@ def _canonicalize_dpv_uri(uri_str: str) -> str | None:
 # which is the subject of the RDF served by Special:EntityData. Labels are only found under the
 # entity URI, so page URIs are rewritten to it.
 WIKIDATA_HOSTS = {"wikidata.org", "www.wikidata.org"}
-WIKIDATA_PAGE_PATH_RE = re.compile(r"^/wiki/(?:Property:|Lexeme:)?(?P<id>[QPL][0-9]+)$")
+WIKIDATA_PAGE_PATH_RE = re.compile(r"^/wiki/(?:Property:|Lexeme:)?(?P<id>[QPL]\d+)$", re.ASCII)
 
 
 def _canonicalize_wikidata_uri(uri_str: str) -> str | None:
@@ -193,7 +193,7 @@ def _canonicalize_wikidata_uri(uri_str: str) -> str | None:
     if not match:
         return None
 
-    return f"http://www.wikidata.org/entity/{match.group('id')}"
+    return f"http://www.wikidata.org/entity/{match.group('id')}"  # NOSONAR
 
 
 # Ordered list of URI canonicalizers: pure rewrites applied, in order, before a URI
