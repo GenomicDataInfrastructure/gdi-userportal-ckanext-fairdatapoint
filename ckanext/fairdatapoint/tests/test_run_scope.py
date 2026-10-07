@@ -126,3 +126,37 @@ class TestForgetFinishedRuns:
         forget_finished_runs(force=True)
 
         assert "job-1" in run_scope._run_stores
+
+    @patch("ckan.model.Session")
+    def test_the_same_run_does_not_ask_the_database_again(self, session):
+        run_scope._run_stores["job-1"] = {"names": set()}
+        _jobs_running(session, "job-1")
+
+        for _ in range(3):
+            start_run("job-1")
+
+        # asked when the run began, not again for every record of it
+        assert session.query.call_count == 1
+
+    @patch("ckan.model.Session")
+    def test_a_finished_current_run_is_left_and_not_recreated(self, session):
+        start_run("job-1")
+        run_store("names", set).add("a")
+        _jobs_running(session)
+
+        forget_finished_runs(force=True)
+
+        assert current_run() is None
+        assert run_store("names", set) is None
+        assert run_scope._run_stores == {}
+
+    @patch("ckan.model.Session")
+    def test_a_running_current_run_is_kept(self, session):
+        start_run("job-1")
+        run_store("names", set).add("a")
+        _jobs_running(session, "job-1")
+
+        forget_finished_runs(force=True)
+
+        assert current_run() == "job-1"
+        assert run_store("names", set) == {"a"}

@@ -32,15 +32,17 @@ _last_run_check = 0.0
 def start_run(run_id: str | None) -> None:
     """Marks the harvest job (run) the labels are resolved for from now on
 
-    Forgets what is cached for runs that have finished in the meantime. Without a run,
-    nothing is cached per run.
+    Forgets what is cached for runs that have finished in the meantime, when the run
+    changes. This is called for every record of a harvest job, so the database is not
+    asked again while it is the same job. Without a run, nothing is cached per run.
 
     Parameters
     ----------
     run_id : str | None
         Id of the harvest job that is being harvested
     """
-    forget_finished_runs(force=True)
+    if run_id != _current_run.get():
+        forget_finished_runs(force=True)
     _current_run.set(run_id)
 
 
@@ -100,5 +102,10 @@ def forget_finished_runs(force: bool = False) -> None:
         log.warning("Could not check which harvest jobs are running: %s", e)
         return
 
-    for run_id in set(_run_stores) - running:
+    finished = set(_run_stores) - running
+    for run_id in finished:
         del _run_stores[run_id]
+
+    # The run this context is in is over: later work must not recreate its store
+    if _current_run.get() in finished:
+        _current_run.set(None)
