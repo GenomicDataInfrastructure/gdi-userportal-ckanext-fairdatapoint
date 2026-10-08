@@ -78,8 +78,8 @@ NESTED_FIELD_TRANSLATIONS = {
     "qualified_attribution": {"role"},
     "quality_annotation": {"body"},
     "spatial_coverage": {"uri"},
-    "creator": {"publisher_type", "type"},
-    "publisher": {"publisher_type", "type"},
+    "creator": {"publisher_type", "type", "country"},
+    "publisher": {"publisher_type", "type", "country"},
     "was_generated_by": {"dct_type"},
 }
 
