@@ -17,7 +17,12 @@ from ckanext.fairdatapoint.resolver import (
     _canonicalize_uri,
     _check_public_destination,
     _get_public,
+
+
+    _canonicalize_wikidata_uri,
 )
+from ckanext.fairdatapoint import resolver as resolver_module
+from ckanext.fairdatapoint import run_scope
 
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
 PUBLIC_ADDRESS = "93.184.216.34"
@@ -915,3 +920,263 @@ class TestGenericLoaderDestinations:
             assert uri in resolver_module.SKIP_URIS
         finally:
             resolver_module.SKIP_URIS.discard(uri)
+
+
+class TestIcd10Resolver:
+    """ICD-10 URIs are links into the WHO browser; labels come from its public JSON."""
+
+    SUBCATEGORY = "http://icd.who.int/browse10/2019/en#/Y59.0"
+    CATEGORY = "http://icd.who.int/browse10/2019/en#/Y59"
+
+    @pytest.fixture(autouse=True)
+    def _fresh_skip_uris(self, monkeypatch):
+        from ckanext.fairdatapoint import resolver
+
+        monkeypatch.setattr(resolver, "SKIP_URIS", set())
+
+    @staticmethod
+    def _response(json_data=None, text=""):
+        response = MagicMock()
+        response.json.return_value = json_data
+        response.text = text
+        return response
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_subcategory_label_comes_from_its_category_children(self, mock_get):
+        mock_get.return_value = self._response(
+            [
+                {"ID": "Y59.0", "label": "Y59.0 Viral vaccines"},
+                {"ID": "Y59.1", "label": "Y59.1 Rickettsial vaccines"},
+            ]
+        )
+
+        result = resolvable_label_resolver().load_and_translate_uri(self.SUBCATEGORY)
+
+        assert result == [
+            {
+                "term": self.SUBCATEGORY,
+                "term_translation": "Viral vaccines",
+                "lang_code": "en",
+            }
+        ]
+        mock_get.assert_called_once()
+        assert mock_get.call_args[0][0].endswith("/2019/en/JsonGetChildrenConcepts")
+        assert mock_get.call_args[1]["params"]["ConceptId"] == "Y59"
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_category_label_comes_from_the_narrowest_block(self, mock_get):
+        page = "Chapter XX (V01-Y98) Complications (Y40-Y84) Drugs (Y40-Y59) Y59"
+        mock_get.side_effect = [
+            self._response(text=page),
+            self._response(
+                [
+                    {"ID": "Y58", "label": "Y58 Bacterial vaccines"},
+                    {"ID": "Y59", "label": "Y59 Other and unspecified vaccines"},
+                ]
+            ),
+        ]
+
+        result = resolvable_label_resolver().load_and_translate_uri(self.CATEGORY)
+
+        assert [r["term_translation"] for r in result] == [
+            "Other and unspecified vaccines"
+        ]
+        assert mock_get.call_args_list[0][0][0].endswith("/GetConcept")
+        assert mock_get.call_args_list[1][1]["params"]["ConceptId"] == "Y40-Y59"
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_label_uses_the_language_of_the_uri(self, mock_get):
+        mock_get.return_value = self._response(
+            [{"ID": "Y59.0", "label": "Y59.0 Virale vaccins"}]
+        )
+        uri = "http://icd.who.int/browse10/2019/nl#/Y59.0"
+
+        result = resolvable_label_resolver().load_and_translate_uri(uri)
+
+        assert result == [
+            {"term": uri, "term_translation": "Virale vaccins", "lang_code": "nl"}
+        ]
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_unknown_code_gives_no_translation(self, mock_get):
+        mock_get.return_value = self._response(
+            [{"ID": "Y59.1", "label": "Y59.1 Rickettsial vaccines"}]
+        )
+
+        assert resolvable_label_resolver().load_and_translate_uri(self.SUBCATEGORY) == []
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    def test_request_failure_gives_no_translation_and_is_not_retried(self, mock_get):
+        mock_get.side_effect = Exception("boom")
+        resolver = resolvable_label_resolver()
+
+        assert resolver.load_and_translate_uri(self.SUBCATEGORY) == []
+        assert resolver.load_and_translate_uri(self.SUBCATEGORY) == []
+        assert mock_get.call_count == 1
+
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "http://icd.who.int/browse10/2019/en",
+            "http://example.com/browse10/2019/en#/Y59.0",
+            "http://icd.who.int/browse10/2019/en#/not-a-code",
+        ],
+    )
+    def test_other_uris_are_not_routed_to_the_icd_loader(self, uri):
+        resolver = resolvable_label_resolver()
+
+        with patch.object(resolver, "_load_icd10_graph") as icd_loader, patch.object(
+            resolver, "_load_generic_graph", return_value=True
+        ) as generic_loader:
+            resolver.load_graph(uri)
+
+        icd_loader.assert_not_called()
+        generic_loader.assert_called_once_with(uri)
+
+
+class TestWikidataCanonicalization:
+    """Tests for the Wikidata page URI -> entity URI canonicalizer and its wiring
+    into `literal_dict_from_graph`."""
+
+    wikidata_data_catalog_path = Path(
+        TEST_DATA_DIRECTORY, "wikidata_data_catalog_entry.ttl"
+    )
+
+    def test_canonicalize_page_uri(self):
+        assert _canonicalize_wikidata_uri(
+            "http://www.wikidata.org/wiki/Q327718"
+        ) == "http://www.wikidata.org/entity/Q327718"
+
+    def test_canonicalize_https_page_uri(self):
+        assert _canonicalize_wikidata_uri(
+            "https://www.wikidata.org/wiki/Q327718"
+        ) == "http://www.wikidata.org/entity/Q327718"
+
+    def test_canonicalize_property_page_uri(self):
+        assert _canonicalize_wikidata_uri(
+            "http://www.wikidata.org/wiki/Property:P494"
+        ) == "http://www.wikidata.org/entity/P494"
+
+    def test_canonicalize_ignores_entity_uri(self):
+        assert _canonicalize_wikidata_uri(
+            "http://www.wikidata.org/entity/Q327718"
+        ) is None
+
+    def test_canonicalize_ignores_unrelated_host(self):
+        assert _canonicalize_wikidata_uri(
+            "http://www.example.com/wiki/Q327718"
+        ) is None
+
+    def test_canonicalize_ignores_non_entity_pages(self):
+        assert _canonicalize_wikidata_uri(
+            "https://www.wikidata.org/wiki/Special:EntityData/Q327718"
+        ) is None
+
+    def test_canonicalize_ignores_non_ascii_digits(self):
+        assert _canonicalize_wikidata_uri(
+            "https://www.wikidata.org/wiki/Q٣٢١"
+        ) is None
+
+    def test_canonicalize_host_is_case_insensitive(self):
+        assert _canonicalize_wikidata_uri(
+            "http://WWW.WIKIDATA.ORG/wiki/Q327718"
+        ) == "http://www.wikidata.org/entity/Q327718"
+
+    def test_canonicalize_uri_wrapper_rewrites_page_uri(self):
+        assert _canonicalize_uri(
+            "http://www.wikidata.org/wiki/Q29937289"
+        ) == "http://www.wikidata.org/entity/Q29937289"
+
+    def test_labels_are_found_for_a_page_uri(self):
+        """The graph describes the entity URI; looking labels up with the page URI of
+        the same item must find them."""
+        resolver = resolvable_label_resolver()
+        resolver.label_graph = Graph().parse(self.wikidata_data_catalog_path)
+
+        by_page_uri = resolver.literal_dict_from_graph(
+            "http://www.wikidata.org/wiki/Q29937289"
+        )
+        by_entity_uri = resolver.literal_dict_from_graph(
+            "http://www.wikidata.org/entity/Q29937289"
+        )
+
+        assert by_page_uri
+        assert by_page_uri == by_entity_uri
+
+
+class TestSkipUrisPerHarvestJob:
+    """URIs that failed to load are not tried again during one harvest job, and forgotten
+    with it."""
+
+    URI = "http://purl.bioontology.org/ontology/ICD10CM/U07.1"
+
+    @pytest.fixture(autouse=True)
+    def clean_state(self):
+        run_scope._run_stores.clear()
+        run_scope._current_run.set(None)
+        resolver_module.SKIP_URIS.clear()
+        yield
+        run_scope._run_stores.clear()
+        run_scope._current_run.set(None)
+        resolver_module.SKIP_URIS.clear()
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key", return_value=None)
+    def test_a_failed_uri_is_kept_in_the_set_of_the_harvest_job(self, _api_key, _get):
+        run_scope.start_run("job-1")
+
+        resolvable_label_resolver().load_graph(self.URI)
+
+        assert run_scope._run_stores["job-1"][resolver_module.SKIP_URIS_STORE] == {self.URI}
+        assert self.URI not in resolver_module.SKIP_URIS
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key", return_value=None)
+    def test_a_failed_uri_is_not_tried_again_in_the_same_job(self, _api_key, _get):
+        run_scope.start_run("job-1")
+        resolver = resolvable_label_resolver()
+
+        with patch.object(
+            resolvable_label_resolver, "_load_bioontology_graph", return_value=False
+        ) as loader:
+            resolver.load_graph(self.URI)
+            resolver.load_graph(self.URI)
+            resolvable_label_resolver().load_graph(self.URI)
+
+        assert loader.call_count == 1
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key", return_value=None)
+    def test_another_job_tries_a_failed_uri_again(self, _api_key, _get):
+        run_scope.start_run("job-1")
+        with patch.object(
+            resolvable_label_resolver, "_load_bioontology_graph", return_value=False
+        ) as loader:
+            resolvable_label_resolver().load_graph(self.URI)
+
+            run_scope.start_run("job-2")
+            resolvable_label_resolver().load_graph(self.URI)
+
+        assert loader.call_count == 2
+
+    @patch("ckan.model.Session")
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key", return_value=None)
+    def test_the_set_is_dropped_when_the_job_is_not_running_anymore(
+        self, _api_key, _get, session
+    ):
+        run_scope.start_run("job-1")
+        resolvable_label_resolver().load_graph(self.URI)
+        session.query.return_value.filter.return_value.filter.return_value = []
+
+        run_scope.forget_finished_runs(force=True)
+
+        assert run_scope._run_stores == {}
+
+    @patch("ckanext.fairdatapoint.resolver.requests.get")
+    @patch("ckanext.fairdatapoint.resolver.get_bioportal_api_key", return_value=None)
+    def test_without_a_harvest_job_the_process_wide_set_is_used(self, _api_key, _get):
+        resolvable_label_resolver().load_graph(self.URI)
+
+        assert self.URI in resolver_module.SKIP_URIS
+        assert run_scope._run_stores == {}

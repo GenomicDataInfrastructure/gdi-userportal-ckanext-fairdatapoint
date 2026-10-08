@@ -7,10 +7,13 @@ from unittest.mock import patch
 import pytest
 from rdflib import URIRef
 
+from ckanext.fairdatapoint import labels, run_scope
+from ckanext.fairdatapoint.run_scope import start_run
 from ckanext.fairdatapoint.labels import (
     _collect_values_for_field,
     _is_absolute_uri,
     get_list_unresolved_terms,
+    get_missing_languages,
     resolve_labels,
     terms_in_package_dict,
 )
@@ -66,27 +69,45 @@ def test_terms_in_package_dict():
 
 class TestTermUpdates:
 
-    @patch("ckan.plugins.toolkit.get_action")
-    def test_unresolved_URIs(self, get_action):
-        known_data = [
-            {
-                "term": "http://example.com/uri1",
-                "term_translation": "moo",
-                "lang_code": "en",
-            },
-        ]
+    URI_EN_ONLY = "http://example.com/uri1"
+    URI_UNKNOWN = "http://example.com/uri2"
+    URI_COMPLETE = "http://example.com/uri3"
 
-        get_action.return_value.return_value = known_data
+    KNOWN_DATA = [
+        {"term": URI_EN_ONLY, "term_translation": "moo", "lang_code": "en"},
+        {"term": "http://example.com/uri3", "term_translation": "cow", "lang_code": "en"},
+        {"term": "http://example.com/uri3", "term_translation": "koe", "lang_code": "nl"},
+    ]
+
+    @patch("ckan.plugins.toolkit.get_action")
+    def test_a_term_missing_one_language_is_unresolved(self, get_action):
+        get_action.return_value.return_value = self.KNOWN_DATA
 
         out_list = get_list_unresolved_terms(
-            ["http://example.com/uri1", "http://example.com/uri2"]
+            [self.URI_EN_ONLY, self.URI_UNKNOWN, self.URI_COMPLETE]
         )
 
         get_action.return_value.assert_called_once()
-        assert out_list == ["http://example.com/uri2"]
+        assert sorted(out_list) == sorted([self.URI_EN_ONLY, self.URI_UNKNOWN])
+
+    @patch("ckan.plugins.toolkit.get_action")
+    def test_missing_languages_are_reported_per_term(self, get_action):
+        get_action.return_value.return_value = self.KNOWN_DATA
+
+        missing = get_missing_languages(
+            [self.URI_EN_ONLY, self.URI_UNKNOWN, self.URI_COMPLETE]
+        )
+
+        assert missing == {self.URI_EN_ONLY: {"nl"}, self.URI_UNKNOWN: {"en", "nl"}}
+
+    @patch("ckan.plugins.toolkit.get_action")
+    def test_only_the_requested_languages_count(self, get_action):
+        get_action.return_value.return_value = self.KNOWN_DATA
+
+        assert get_missing_languages([self.URI_EN_ONLY], languages=["en"]) == {}
 
 
-@patch("ckanext.fairdatapoint.labels.get_list_unresolved_terms")
+@patch("ckanext.fairdatapoint.labels.get_missing_languages")
 @patch(
     "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
 )
@@ -94,12 +115,11 @@ class TestTermUpdates:
 def test_resolve_label_happy_flow(
     get_action,
     load_and_translate_uri,
-    get_list_unresolved_terms,
+    get_missing_languages,
 ):
-    # get_list_unresolved_terms.r
-    get_list_unresolved_terms.return_value = [
-        "http://www.wikidata.org/entity/Q29937289"
-    ]
+    get_missing_languages.return_value = {
+        "http://www.wikidata.org/entity/Q29937289": {"en", "nl"}
+    }
     translation_list = [
         {
             "term": "http://www.wikidata.org/entity/Q29937289",
@@ -120,9 +140,10 @@ def test_resolve_label_happy_flow(
     expected_filtered_translation_list = translation_list[1:]
 
     load_and_translate_uri.return_value = translation_list
-    get_action.return_value.return_value = {"success": "3 updated succesfully"}
+    get_action.return_value.return_value = {"success": "2 updated succesfully"}
 
-    assert resolve_labels({"theme": "http://www.wikidata.org/entity/Q29937289"}) == 3
+    # three were fetched, the two of the missing languages are stored and counted
+    assert resolve_labels({"theme": "http://www.wikidata.org/entity/Q29937289"}) == 2
 
     get_action.return_value.assert_called_once_with(
         {"ignore_auth": True, "defer_commit": True},
@@ -400,6 +421,37 @@ class TestTermsInPackageDictWithResources:
         }
         assert set(result) == expected_uris
 
+    def test_terms_in_package_dict_with_qualified_attribution_agent(self):
+        """An agent of a qualified attribution is an agent like a publisher or a
+        creator: its publisher_type, type and country(ies) are all collected."""
+        package_dict = {
+            "qualified_attribution": [
+                {
+                    "role": "http://example.com/role",
+                    "agent": [
+                        {
+                            "name": "Example Agent",
+                            "publisher_type": ["http://example.com/agent-publisher-type"],
+                            "type": "http://example.com/agent-type",
+                            "country": [
+                                "http://publications.europa.eu/resource/authority/country/DEU",
+                                "http://publications.europa.eu/resource/authority/country/FRA",
+                            ],
+                        }
+                    ],
+                }
+            ]
+        }
+        result = terms_in_package_dict(package_dict)
+        expected_uris = {
+            "http://example.com/role",
+            "http://example.com/agent-publisher-type",
+            "http://example.com/agent-type",
+            "http://publications.europa.eu/resource/authority/country/DEU",
+            "http://publications.europa.eu/resource/authority/country/FRA",
+        }
+        assert set(result) == expected_uris
+
     def test_terms_in_package_dict_with_resource_access_service_empty_list(self):
         """Test terms_in_package_dict with resource where access_service is empty list"""
         package_dict = {
@@ -423,7 +475,7 @@ class TestTermsInPackageDictWithResources:
 class TestResolveLabelsEdgeCases:
     """Test resolve_labels edge cases"""
 
-    @patch("ckanext.fairdatapoint.labels.get_list_unresolved_terms")
+    @patch("ckanext.fairdatapoint.labels.get_missing_languages")
     @patch(
         "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
     )
@@ -432,12 +484,12 @@ class TestResolveLabelsEdgeCases:
         self,
         get_action,
         load_and_translate_uri,
-        get_list_unresolved_terms,
+        get_missing_languages,
     ):
         """Test resolve_labels when filtered_translation_list is empty (unsupported languages)"""
-        get_list_unresolved_terms.return_value = [
-            "http://www.wikidata.org/entity/Q29937289"
-        ]
+        get_missing_languages.return_value = {
+            "http://www.wikidata.org/entity/Q29937289": {"en", "nl"}
+        }
         # Translation list with only unsupported language codes (not in RESOLVE_LANGUAGES)
         translation_list = [
             {
@@ -460,3 +512,159 @@ class TestResolveLabelsEdgeCases:
         assert result == 0
         # Should not call term_translation_update_many since filtered list is empty
         get_action.return_value.assert_not_called()
+
+
+class TestResolveLabelsMissingLanguages:
+    """A term that is known in one language still gets its other languages resolved,
+    without touching the translations that are already there."""
+
+    TERM = "https://publications.europa.eu/resource/authority/country/DEU"
+    FETCHED = [
+        {"term": TERM, "term_translation": "Germany", "lang_code": "en"},
+        {"term": TERM, "term_translation": "Duitsland", "lang_code": "nl"},
+    ]
+
+    @patch("ckanext.fairdatapoint.labels.get_missing_languages")
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    @patch("ckan.plugins.toolkit.get_action")
+    def test_only_the_missing_language_is_stored(
+        self, get_action, load_and_translate_uri, get_missing_languages
+    ):
+        get_missing_languages.return_value = {self.TERM: {"nl"}}
+        load_and_translate_uri.return_value = self.FETCHED
+        get_action.return_value.return_value = {"success": "1 updated succesfully"}
+
+        stored = resolve_labels({"creator": [{"country": [self.TERM]}]})
+
+        get_action.return_value.assert_called_once_with(
+            {"ignore_auth": True, "defer_commit": True},
+            {"data": [self.FETCHED[1]]},
+        )
+        # the number of stored labels, not of the fetched ones
+        assert stored == 1
+
+    @patch("ckanext.fairdatapoint.labels.get_missing_languages")
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    @patch("ckan.plugins.toolkit.get_action")
+    def test_nothing_is_stored_when_the_source_has_no_missing_language(
+        self, get_action, load_and_translate_uri, get_missing_languages
+    ):
+        get_missing_languages.return_value = {self.TERM: {"nl"}}
+        load_and_translate_uri.return_value = [self.FETCHED[0]]
+
+        assert resolve_labels({"creator": [{"country": [self.TERM]}]}) == 0
+        get_action.return_value.assert_not_called()
+
+    @patch("ckanext.fairdatapoint.labels.get_missing_languages")
+    def test_nothing_is_fetched_when_every_language_is_known(self, get_missing_languages):
+        get_missing_languages.return_value = {}
+
+        assert resolve_labels({"creator": [{"country": [self.TERM]}]}) == -1
+
+
+class TestUnavailableLanguagesCache:
+    """A language the source does not have is only asked for once per harvest run."""
+
+    TERM = "http://publications.europa.eu/resource/authority/country/DEU"
+    ENGLISH_ONLY = [{"term": TERM, "term_translation": "Germany", "lang_code": "en"}]
+
+    @pytest.fixture(autouse=True)
+    def clean_cache(self):
+        run_scope._run_stores.clear()
+        run_scope._current_run.set(None)
+        yield
+        run_scope._run_stores.clear()
+        run_scope._current_run.set(None)
+
+    @staticmethod
+    def _resolve(term, missing):
+        with patch(
+            "ckanext.fairdatapoint.labels.get_missing_languages",
+            return_value=missing,
+        ), patch("ckan.plugins.toolkit.get_action"), patch.object(
+            labels, "forget_finished_runs"
+        ):
+            return resolve_labels({"theme": term})
+
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    def test_a_language_the_source_lacks_is_asked_for_once_per_run(self, load):
+        load.return_value = self.ENGLISH_ONLY
+        start_run("job-1")
+
+        self._resolve(self.TERM, {self.TERM: {"nl"}})
+        self._resolve(self.TERM, {self.TERM: {"nl"}})
+        self._resolve(self.TERM, {self.TERM: {"nl"}})
+
+        assert load.call_count == 1
+
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    def test_only_the_unavailable_language_is_skipped(self, load):
+        load.return_value = self.ENGLISH_ONLY
+        start_run("job-1")
+        self._resolve(self.TERM, {self.TERM: {"nl"}})
+
+        # another language of the same term is still asked for
+        self._resolve(self.TERM, {self.TERM: {"nl", "en"}})
+
+        assert load.call_count == 2
+
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    def test_nothing_is_cached_without_a_run(self, load):
+        load.return_value = self.ENGLISH_ONLY
+
+        self._resolve(self.TERM, {self.TERM: {"nl"}})
+        self._resolve(self.TERM, {self.TERM: {"nl"}})
+
+        assert load.call_count == 2
+        assert run_scope._run_stores == {}
+
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    def test_a_run_does_not_use_what_another_run_found(self, load):
+        load.return_value = self.ENGLISH_ONLY
+        start_run("job-1")
+        self._resolve(self.TERM, {self.TERM: {"nl"}})
+
+        start_run("job-2")
+        self._resolve(self.TERM, {self.TERM: {"nl"}})
+
+        assert load.call_count == 2
+
+    @patch(
+        "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
+    )
+    def test_a_language_that_was_returned_is_not_remembered_as_unavailable(self, load):
+        load.return_value = self.ENGLISH_ONLY + [
+            {"term": self.TERM, "term_translation": "Duitsland", "lang_code": "nl"}
+        ]
+        start_run("job-1")
+
+        self._resolve(self.TERM, {self.TERM: {"nl"}})
+
+        assert run_scope._run_stores["job-1"][labels.UNAVAILABLE_LANGUAGES] == {}
+
+
+def test_the_dcat_harvester_hands_over_its_harvest_job():
+    from unittest.mock import MagicMock
+
+    from ckanext.fairdatapoint.harvesters import FairDataPointCivityHarvester
+
+    run_scope._current_run.set(None)
+    job = MagicMock(id="job-42")
+
+    url, errors = FairDataPointCivityHarvester().before_download("http://example.com", job)
+
+    assert (url, errors) == ("http://example.com", [])
+    assert run_scope.current_run() == "job-42"
+    run_scope._current_run.set(None)

@@ -17,6 +17,7 @@ from ckan import model
 from sqlalchemy.exc import IntegrityError
 
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
+from ckanext.fairdatapoint.run_scope import start_run
 from ckanext.harvest.harvesters import HarvesterBase
 from ckanext.harvest.model import HarvestObject
 from ckanext.harvest.model import HarvestObjectExtra as HOExtra
@@ -319,6 +320,7 @@ class CivityHarvester(HarvesterBase):
             # Determine datatype
             identifier_harvest_object = Identifier(harvest_object.guid)
             datatype = identifier_harvest_object.get_id_type()
+            start_run(harvest_object.harvest_job_id)
 
             if datatype == "dataset":
                 # Build mapping from dataseries GUID to package ID for all active dataset_series in the database

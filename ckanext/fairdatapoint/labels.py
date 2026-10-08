@@ -10,6 +10,7 @@ from ckan.plugins import toolkit
 from rdflib import URIRef
 
 from ckanext.fairdatapoint.resolver import resolvable_label_resolver
+from ckanext.fairdatapoint.run_scope import forget_finished_runs, run_store
 
 log = logging.getLogger(__name__)
 
@@ -69,13 +70,51 @@ ACCESS_SERVICES_REPLACE_FIELDS = [
     "theme",
 ]
 
+# Languages a source turned out not to have a label in, per term, for the harvest job that is
+# running: a term that is missing a language in CKAN is fetched again for every dataset it
+# occurs in, so without this a source that has no (say) Dutch label would be asked for it over
+# and over. The cache lives for one harvest job only, see `run_scope`.
+UNAVAILABLE_LANGUAGES = "unavailable_languages"
+
+
+def _without_unavailable_languages(
+        missing_languages: dict[str, set[str]]
+) -> dict[str, set[str]]:
+    """Leaves out the languages that this run already found the source does not have"""
+    unavailable = run_store(UNAVAILABLE_LANGUAGES, dict)
+    if not unavailable:
+        return missing_languages
+
+    remaining = {
+        term: languages - unavailable.get(term, set())
+        for term, languages in missing_languages.items()
+    }
+    return {term: languages for term, languages in remaining.items() if languages}
+
+
+def _remember_unavailable_languages(
+        missing_languages: dict[str, set[str]], translations: list[dict[str, str]]
+) -> None:
+    """Remembers, for this run, the missing languages the source did not return"""
+    unavailable = run_store(UNAVAILABLE_LANGUAGES, dict)
+    if unavailable is None:
+        return
+
+    for term, languages in missing_languages.items():
+        returned = {t.get("lang_code") for t in translations if t.get("term") == term}
+        not_returned = languages - returned
+        if not_returned:
+            unavailable.setdefault(term, set()).update(not_returned)
+
+
 # Languages to resolve labels in
 # TODO language codes should be dynamic
 RESOLVE_LANGUAGES = ("en", "nl")
 
 NESTED_FIELD_TRANSLATIONS = {
     "qualified_relation": {"role"},
-    "qualified_attribution": {"role"},
+    "qualified_attribution": {"role", "agent"},
+    "agent": {"publisher_type", "type", "country"},
     "quality_annotation": {"body"},
     "spatial_coverage": {"uri"},
     "creator": {"publisher_type", "type", "country"},
@@ -101,22 +140,34 @@ def resolve_labels(package_dict: dict) -> int:
     translation_list = []
 
     total_terms = terms_in_package_dict(package_dict)
-    unresolved_terms = get_list_unresolved_terms(total_terms)
+    forget_finished_runs()
+    all_missing_languages = get_missing_languages(total_terms)
+    missing_languages = _without_unavailable_languages(all_missing_languages)
+    if len(missing_languages) < len(all_missing_languages):
+        log.debug(
+            "Not asking again for %d term(s) the source has no (more) languages for in this run",
+            len(all_missing_languages) - len(missing_languages),
+        )
 
-    if unresolved_terms:
+    if missing_languages:
         resolver = resolvable_label_resolver()
 
-        for term in unresolved_terms:
+        for term in missing_languages:
             extra_translations = resolver.load_and_translate_uri(term)
             translation_list.extend(extra_translations)
+
+        _remember_unavailable_languages(missing_languages, translation_list)
 
         # Check if there is actually translations in the list
         if translation_list:
             # term_translation_update is a privileged function
             # Thank god CKAN is like Hollywood OS and we can just override
-            # Extra defensive filter: ensure only supported language codes are sent
+            # Only store the languages a term is missing: a translation that is already
+            # known (and possibly curated) is left as it is.
             filtered_translation_list = [
-                t for t in translation_list if t.get("lang_code") in RESOLVE_LANGUAGES
+                t
+                for t in translation_list
+                if t.get("lang_code") in missing_languages.get(t.get("term"), ())
             ]
 
             if not filtered_translation_list:
@@ -131,11 +182,50 @@ def resolve_labels(package_dict: dict) -> int:
             if "success" not in updated_labels:
                 log.error("Error updating labels: %s", updated_labels)
             else:
-                return len(translation_list)
+                return len(filtered_translation_list)
         else:
             return 0
     else:
         return -1
+
+
+def get_missing_languages(
+        terms: list[str], languages: list[str] = RESOLVE_LANGUAGES
+) -> dict[str, set[str]]:
+    """Gets, per term, the languages CKAN has no translation for yet
+
+    A term that is known in one language but not in another is not resolved: it is
+    returned with the languages that are still missing, so those can be added.
+
+    Parameters
+    ----------
+    terms : list[str]
+        List of labels that harvested, that need to be checked if they are resolved
+    languages : list[str], optional
+        List of language codes that need to be resolved, default is 'en' and 'nl'.
+
+    Returns
+    -------
+    dict[str, set[str]]
+        Terms that are missing a translation, with the language codes they are missing.
+        Terms that are known in every language are not included.
+    """
+    term_set = set(terms)
+
+    translation_table = toolkit.get_action("term_translation_show")(
+        {}, {"terms": term_set, "lang_codes": languages}
+    )
+
+    known_languages: dict[str, set[str]] = {}
+    for row in translation_table:
+        known_languages.setdefault(row["term"], set()).add(row["lang_code"])
+
+    wanted_languages = set(languages)
+    return {
+        term: wanted_languages - known_languages.get(term, set())
+        for term in term_set
+        if wanted_languages - known_languages.get(term, set())
+    }
 
 
 def get_list_unresolved_terms(
@@ -143,9 +233,7 @@ def get_list_unresolved_terms(
 ) -> list[str]:
     """This function gets a list of terms not fully known by CKAN, based on an input list
 
-    If a label is present in one language but missing in another, it is considered resolved:
-    reason being that the language most likely does not exist for a given label, if one was
-    resolved successfully before.
+    A term is not fully known if it has no translation in one or more of the languages.
 
     Parameters
     ----------
@@ -159,16 +247,7 @@ def get_list_unresolved_terms(
     list[str]
         List containing the labels that are not resolved yet
     """
-    term_set = set(terms)
-
-    translation_table = toolkit.get_action("term_translation_show")(
-        {}, {"terms": term_set, "lang_codes": languages}
-    )
-
-    known_terms = set(x["term"] for x in translation_table)
-    unknown_terms = term_set - known_terms
-
-    return list(unknown_terms)
+    return list(get_missing_languages(terms, languages))
 
 
 def _is_absolute_uri(uri: str) -> bool:

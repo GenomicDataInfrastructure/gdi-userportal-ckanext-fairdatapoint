@@ -10,9 +10,10 @@ import socket
 from typing import Callable
 
 import requests
-from rdflib import RDFS, SDO, SKOS, Graph, URIRef
+from rdflib import RDFS, SDO, SKOS, Graph, Literal, URIRef
 from urllib.parse import urljoin, urlparse
 from ckanext.fairdatapoint.harvesters.config import get_bioportal_api_key
+from ckanext.fairdatapoint.run_scope import run_store
 
 log = logging.getLogger(__name__)
 
@@ -20,7 +21,11 @@ log = logging.getLogger(__name__)
 # Default language for a label if it is not defined (Literal without language tag)
 DEFAULT_LABEL_LANG = "en"
 LANG_LIST = ["en", "nl"]
+# URIs that could not be loaded and are not tried again. Per harvest job (see `run_scope`), so
+# it is dropped with the job; only when no harvest job is known this set, which lives as long
+# as the process, is used.
 SKIP_URIS: set[str] = set()
+SKIP_URIS_STORE = "skip_uris"
 REQUEST_TIMEOUT = 100  # seconds
 MAX_REDIRECTS = 5
 REDIRECT_STATUS_CODES = (301, 302, 303, 307, 308)
@@ -106,6 +111,15 @@ def _get_public(url: str, headers: dict[str, str]) -> requests.Response:
 
     raise UnsafeUriError(f"More than {MAX_REDIRECTS} redirects")
 
+# ICD-10 codes are referenced as links into the public WHO ICD-10 browser, with the code in
+# the URI fragment, e.g. http://icd.who.int/browse10/2019/en#/Y59.0
+ICD10_BROWSER_BASE = "https://icd.who.int/browse10"
+ICD10_URI_RE = re.compile(
+    r"^https?://icd\.who\.int/browse10/(?P<release>\d{4})/(?P<lang>[a-z]{2})/?#/(?P<code>[A-Z][0-9A-Z.\-]*)$"
+)
+ICD10_CATEGORY_RE = re.compile(r"[A-Z]\d{2}")
+ICD10_BLOCK_RANGE_RE = re.compile(r"\(([A-Z]\d{2})-([A-Z]\d{2})\)")
+
 # DPV is published as versioned, non-content-negotiable GitHub Pages docs (the org
 # also moved from w3c.github.io to w3c-cg.github.io), but every term also has a
 # canonical https://w3id.org/dpv... identifier that *does* content-negotiate and
@@ -147,6 +161,41 @@ def _canonicalize_dpv_uri(uri_str: str) -> str | None:
     return canonical
 
 
+# Wikidata has two URI forms for the same item: the page URI https://www.wikidata.org/wiki/Q123
+# (what people copy from the browser) and the entity URI http://www.wikidata.org/entity/Q123,
+# which is the subject of the RDF served by Special:EntityData. Labels are only found under the
+# entity URI, so page URIs are rewritten to it.
+WIKIDATA_HOSTS = {"wikidata.org", "www.wikidata.org"}
+WIKIDATA_PAGE_PATH_RE = re.compile(r"^/wiki/(?:Property:|Lexeme:)?(?P<id>[QPL]\d+)$", re.ASCII)
+
+
+def _canonicalize_wikidata_uri(uri_str: str) -> str | None:
+    """Rewrites a Wikidata page URI (/wiki/Q123) to its entity URI (/entity/Q123).
+
+    Parameters
+    ----------
+    uri_str : str
+        URI to check and possibly rewrite
+
+    Returns
+    -------
+    str | None
+        The canonical http://www.wikidata.org/entity/... URI if `uri_str` is a Wikidata
+        page URI of an item, property or lexeme, otherwise None (including for URIs that
+        already are entity URIs).
+    """
+    parsed_uri = urlparse(uri_str)
+    hostname = parsed_uri.hostname
+    if not hostname or hostname.lower() not in WIKIDATA_HOSTS:
+        return None
+
+    match = WIKIDATA_PAGE_PATH_RE.match(parsed_uri.path)
+    if not match:
+        return None
+
+    return f"http://www.wikidata.org/entity/{match.group('id')}"  # NOSONAR
+
+
 # Ordered list of URI canonicalizers: pure rewrites applied, in order, before a URI
 # is fetched or matched against a graph. Add an entry here when a host publishes doc
 # pages that don't content-negotiate but does have a resolvable canonical URI
@@ -154,7 +203,14 @@ def _canonicalize_dpv_uri(uri_str: str) -> str | None:
 # canonicalizer to return a non-None result wins.
 URI_CANONICALIZERS: list[Callable[[str], str | None]] = [
     _canonicalize_dpv_uri,
+    _canonicalize_wikidata_uri,
 ]
+
+
+def _skip_uris() -> set[str]:
+    """The set of URIs not to try again: the one of the current harvest job if there is one"""
+    run_skip_uris = run_store(SKIP_URIS_STORE, set)
+    return SKIP_URIS if run_skip_uris is None else run_skip_uris
 
 
 def _canonicalize_uri(uri_str: str) -> str:
@@ -314,7 +370,7 @@ class resolvable_label_resolver:
         if "/ontology/" not in uri:
             log.warning("BioOntology URI does not contain '/ontology/': %s", uri)
             return False
-        
+
         try:
             ontology = uri.split("/ontology/")[1].split("/")[0]
             encoded_concept = requests.utils.quote(uri, safe='')
@@ -339,6 +395,99 @@ class resolvable_label_resolver:
                 return False
         except Exception as e:
             log.warning("Error loading BioOntology URI %s: %s", uri, str(e))
+            return False
+
+    def _icd10_get(self, release: str, lang: str, endpoint: str, concept_id: str):
+        """GET an endpoint of the public WHO ICD-10 browser."""
+        response = requests.get(
+            f"{ICD10_BROWSER_BASE}/{release}/{lang}/{endpoint}",
+            params={
+                "ConceptId": concept_id,
+                "useHtml": "false",
+                "showAdoptedChildren": "true",
+            },
+            headers={"User-Agent": "ckanext-fairdatapoint/harvester"},
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+        return response
+
+    def _icd10_parent_id(self, release: str, lang: str, code: str) -> str | None:
+        """Find the concept that lists `code` as a child in the ICD-10 browser tree.
+
+        A subcategory (A00.1) is listed under its category (A00). A category is listed
+        under the narrowest block (A00-A09) that contains it, which is read from the
+        block ranges on the concept's own page.
+        """
+        if "." in code:
+            return code.split(".")[0]
+        if not ICD10_CATEGORY_RE.fullmatch(code):
+            return None
+
+        page = self._icd10_get(release, lang, "GetConcept", code).text
+        blocks = [
+            (first, last)
+            for first, last in ICD10_BLOCK_RANGE_RE.findall(page)
+            if first <= code <= last
+        ]
+        if not blocks:
+            return None
+
+        def span(block: tuple[str, str]) -> int:
+            first, last = block
+            return (ord(last[0]) * 100 + int(last[1:])) - (
+                ord(first[0]) * 100 + int(first[1:])
+            )
+
+        first, last = min(blocks, key=span)
+        return f"{first}-{last}"
+
+    def _load_icd10_graph(self, uri: str) -> bool:
+        """Load the label of an ICD-10 code from the public WHO ICD-10 browser.
+
+        ICD-10 URIs like http://icd.who.int/browse10/2019/en#/Y59.0 are links into a
+        JavaScript application, so they do not content-negotiate (and the code lives in
+        the fragment, which is never sent to the server). WHO's official ICD API needs
+        an OAuth token, but the browser itself serves unauthenticated JSON: the
+        children of a concept are listed as {"ID": "Y59.0", "label": "Y59.0 Viral
+        vaccines"}. The label is taken from the parent's children.
+
+        Parameters
+        ----------
+        uri : str
+            ICD-10 browser URI, with the code in the fragment
+
+        Returns
+        -------
+        bool
+            True if the label was added, False otherwise
+        """
+        match = ICD10_URI_RE.match(uri)
+        if not match:
+            return False
+
+        release, lang, code = match["release"], match["lang"], match["code"]
+        try:
+            parent_id = self._icd10_parent_id(release, lang, code)
+            if not parent_id:
+                return False
+
+            children = self._icd10_get(
+                release, lang, "JsonGetChildrenConcepts", parent_id
+            ).json()
+            for child in children:
+                if child.get("ID") == code:
+                    label = str(child.get("label", ""))
+                    # The browser prefixes the label with the code itself
+                    label = label.removeprefix(f"{code} ").strip()
+                    if label:
+                        self.label_graph.add(
+                            (URIRef(uri), RDFS.label, Literal(label, lang=lang))
+                        )
+                        return True
+            return False
+        except Exception as e:
+            log.warning("Error loading ICD-10 URI %s: %s", uri, str(e))
             return False
 
     def _load_generic_graph(self, uri: str) -> bool:
@@ -403,8 +552,9 @@ class resolvable_label_resolver:
             Loaded Graph
         """
         uri_str = _canonicalize_uri(str(uri))
+        skip_uris = _skip_uris()
 
-        if uri_str in SKIP_URIS:
+        if uri_str in skip_uris:
             return self.label_graph
 
         if empty_graph:
@@ -417,19 +567,19 @@ class resolvable_label_resolver:
                     loader = getattr(self, loader_name)
                     if loader(uri_str):
                         return self.label_graph
-                    SKIP_URIS.add(uri_str)
+                    skip_uris.add(uri_str)
                     return self.label_graph
 
             # No custom loader matched, fall back to generic HTTP loading
             if self._load_generic_graph(uri_str):
                 return self.label_graph
             else:
-                SKIP_URIS.add(uri_str)
+                skip_uris.add(uri_str)
                 return self.label_graph
 
         except Exception as e:
             log.warning("Error loading graph from %s: %s", uri_str, str(e))
-            SKIP_URIS.add(uri_str)
+            skip_uris.add(uri_str)
         return self.label_graph
 
     def load_and_translate_uri(self, subject_uri: str | URIRef) -> list[dict[str, str]]:
@@ -489,5 +639,9 @@ CUSTOM_LOADERS: list[tuple[Callable[[str], bool], str]] = [
     (
         lambda uri: bool(re.search(r"bioontology\.org", uri, re.IGNORECASE)),
         "_load_bioontology_graph",
+    ),
+    (
+        lambda uri: bool(ICD10_URI_RE.match(uri)),
+        "_load_icd10_graph",
     ),
 ]

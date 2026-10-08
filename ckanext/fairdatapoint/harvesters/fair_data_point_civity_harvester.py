@@ -4,6 +4,9 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 import logging
 
+from ckan.plugins import implements
+
+from ckanext.dcat.interfaces import IDCATRDFHarvester
 from ckanext.fairdatapoint.harvesters.civity_harvester import CivityHarvester
 from ckanext.fairdatapoint.harvesters.config import (
     get_harvester_int_setting,
@@ -15,6 +18,7 @@ from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider imp
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
     FairDataPointRecordToPackageConverter,
 )
+from ckanext.fairdatapoint.run_scope import start_run
 
 PROFILE = "profile"
 HARVEST_CATALOG = "harvest_catalogs"
@@ -27,6 +31,14 @@ log = logging.getLogger(__name__)
 
 
 class FairDataPointCivityHarvester(CivityHarvester):
+    # The dcat_rdf harvester resolves the labels of a whole source in its gather stage and only
+    # tells plugins which harvest job that is through this interface.
+    implements(IDCATRDFHarvester, inherit=True)
+
+    def before_download(self, url, harvest_job):
+        start_run(harvest_job.id)
+        return url, []
+
     def setup_record_provider(self, harvest_url, harvest_config_dict):
         # Harvest catalog config can be set on global CKAN level, but can be overriden by harvest config
         harvest_catalogs = get_harvester_setting(
