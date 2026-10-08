@@ -518,7 +518,7 @@ class TestResolveLabelsMissingLanguages:
     """A term that is known in one language still gets its other languages resolved,
     without touching the translations that are already there."""
 
-    TERM = "http://publications.europa.eu/resource/authority/country/DEU"
+    TERM = "https://publications.europa.eu/resource/authority/country/DEU"
     FETCHED = [
         {"term": TERM, "term_translation": "Germany", "lang_code": "en"},
         {"term": TERM, "term_translation": "Duitsland", "lang_code": "nl"},
