@@ -8,13 +8,30 @@ import pytest
 import rdflib
 from rdflib import Graph
 
+from ckanext.fairdatapoint import resolver as resolver_module
 from ckanext.fairdatapoint.resolver import (
+    MAX_REDIRECTS,
+    UnsafeUriError,
     resolvable_label_resolver,
     _canonicalize_dpv_uri,
     _canonicalize_uri,
+    _check_public_destination,
+    _get_public,
 )
 
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
+PUBLIC_ADDRESS = "93.184.216.34"
+
+
+@pytest.fixture(autouse=True)
+def public_dns():
+    """Every host resolves to a public address, so the tests do not depend on DNS"""
+    with patch(
+        "ckanext.fairdatapoint.resolver._resolve_addresses",
+        return_value={PUBLIC_ADDRESS},
+    ):
+        yield
+
 
 class TestGenericResolverClass:
 
@@ -735,3 +752,166 @@ class TestDpvCanonicalization:
                 "lang_code": "en",
             }
         ]
+
+
+def _resolving_to(*addresses):
+    return patch(
+        "ckanext.fairdatapoint.resolver._resolve_addresses",
+        return_value=set(addresses),
+    )
+
+
+def _response(status_code=200, location=None):
+    response = MagicMock(status_code=status_code)
+    response.headers = {"Location": location} if location else {}
+    return response
+
+
+def _requests(*responses):
+    return patch(
+        "ckanext.fairdatapoint.resolver.requests.get", side_effect=list(responses)
+    )
+
+
+class TestPublicDestinations:
+    """The URIs of harvested records are only requested when they go to a public address."""
+
+    @pytest.mark.parametrize(
+        "address",
+        [
+            "127.0.0.1",
+            "10.0.0.5",
+            "172.16.0.1",
+            "192.168.1.10",
+            "169.254.169.254",
+            "100.64.0.1",
+            "0.0.0.0",
+            "224.0.0.1",
+            "::1",
+            "fe80::1",
+            "fd00::1",
+            "ff02::1",
+            "::ffff:10.0.0.1",
+            "::ffff:127.0.0.1",
+        ],
+    )
+    def test_non_public_addresses_are_rejected(self, address):
+        with _resolving_to(address), pytest.raises(UnsafeUriError):
+            _check_public_destination("http://vocabulary.example/term")
+
+    @pytest.mark.parametrize(
+        "address", [PUBLIC_ADDRESS, "8.8.8.8", "2606:4700:4700::1111", "::ffff:8.8.8.8"]
+    )
+    def test_public_addresses_are_accepted(self, address):
+        with _resolving_to(address):
+            _check_public_destination("https://vocabulary.example/term")
+
+    def test_a_host_with_one_non_public_address_is_rejected(self):
+        with _resolving_to(PUBLIC_ADDRESS, "10.0.0.5"), pytest.raises(UnsafeUriError):
+            _check_public_destination("http://vocabulary.example/term")
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "file:///etc/passwd",
+            "ftp://vocabulary.example/term",
+            "gopher://vocabulary.example/",
+            "http:///no-host",
+            "//vocabulary.example/term",
+        ],
+    )
+    def test_other_schemes_and_missing_hosts_are_rejected(self, url):
+        with pytest.raises(UnsafeUriError):
+            _check_public_destination(url)
+
+    def test_a_host_that_cannot_be_resolved_is_rejected(self):
+        with patch(
+            "ckanext.fairdatapoint.resolver._resolve_addresses",
+            side_effect=OSError("no such host"),
+        ), pytest.raises(UnsafeUriError):
+            _check_public_destination("http://vocabulary.example/term")
+
+    def test_an_empty_answer_is_rejected(self):
+        with _resolving_to(), pytest.raises(UnsafeUriError):
+            _check_public_destination("http://vocabulary.example/term")
+
+
+class TestPublicRedirects:
+    """A redirect is checked like the request that led to it."""
+
+    def test_a_response_that_is_not_a_redirect_is_returned(self):
+        ok = _response(200)
+
+        with _requests(ok) as mock_get:
+            assert _get_public("http://vocabulary.example/term", {}) is ok
+
+        # redirects are followed here, not by requests, so that each one is checked
+        assert mock_get.call_args.kwargs["allow_redirects"] is False
+
+    def test_a_redirect_to_a_public_host_is_followed(self):
+        ok = _response(200)
+
+        with _requests(_response(302, "http://other.example/term"), ok) as mock_get:
+            assert _get_public("http://vocabulary.example/term", {}) is ok
+
+        assert [call.args[0] for call in mock_get.call_args_list] == [
+            "http://vocabulary.example/term",
+            "http://other.example/term",
+        ]
+
+    def test_a_relative_redirect_is_resolved_against_the_url(self):
+        with _requests(_response(301, "/other/term"), _response(200)) as mock_get:
+            _get_public("https://vocabulary.example/term", {})
+
+        assert mock_get.call_args_list[1].args[0] == "https://vocabulary.example/other/term"
+
+    def test_a_redirect_to_a_non_public_address_is_not_followed(self):
+        def resolve(hostname, port):
+            return {"169.254.169.254"} if hostname == "metadata.internal" else {PUBLIC_ADDRESS}
+
+        with patch(
+            "ckanext.fairdatapoint.resolver._resolve_addresses", side_effect=resolve
+        ), _requests(_response(302, "http://metadata.internal/latest")) as mock_get:
+            with pytest.raises(UnsafeUriError):
+                _get_public("http://vocabulary.example/term", {})
+
+        assert mock_get.call_count == 1
+
+    def test_too_many_redirects_are_rejected(self):
+        loop = [_response(302, "http://vocabulary.example/next")] * (MAX_REDIRECTS + 1)
+
+        with _requests(*loop) as mock_get, pytest.raises(UnsafeUriError):
+            _get_public("http://vocabulary.example/term", {})
+
+        assert mock_get.call_count == MAX_REDIRECTS + 1
+
+
+class TestGenericLoaderDestinations:
+    """The generic loader does not reach internal services."""
+
+    def test_a_private_address_is_not_requested(self):
+        resolver = resolvable_label_resolver()
+
+        with _resolving_to("10.0.0.5"), patch(
+            "ckanext.fairdatapoint.resolver.requests.get"
+        ) as mock_get:
+            assert resolver._load_generic_graph("http://internal.example/term") is False
+
+        mock_get.assert_not_called()
+
+    def test_load_graph_gives_no_labels_and_skips_the_uri(self):
+        uri = "http://internal.example/term"
+        resolver = resolvable_label_resolver()
+        resolver_module.SKIP_URIS.discard(uri)
+
+        try:
+            with _resolving_to("10.0.0.5"), patch(
+                "ckanext.fairdatapoint.resolver.requests.get"
+            ) as mock_get:
+                graph = resolver.load_graph(uri)
+
+            mock_get.assert_not_called()
+            assert len(graph) == 0
+            assert uri in resolver_module.SKIP_URIS
+        finally:
+            resolver_module.SKIP_URIS.discard(uri)

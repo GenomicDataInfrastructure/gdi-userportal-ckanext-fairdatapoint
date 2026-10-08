@@ -3,13 +3,15 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 from __future__ import annotations
 
+import ipaddress
 import logging
 import re
+import socket
 from typing import Callable
 
 import requests
 from rdflib import RDFS, SDO, SKOS, Graph, URIRef
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from ckanext.fairdatapoint.harvesters.config import get_bioportal_api_key
 
 log = logging.getLogger(__name__)
@@ -20,6 +22,89 @@ DEFAULT_LABEL_LANG = "en"
 LANG_LIST = ["en", "nl"]
 SKIP_URIS: set[str] = set()
 REQUEST_TIMEOUT = 100  # seconds
+MAX_REDIRECTS = 5
+REDIRECT_STATUS_CODES = (301, 302, 303, 307, 308)
+
+
+class UnsafeUriError(ValueError):
+    """A URI that label resolution must not request"""
+
+
+def _resolve_addresses(hostname: str, port: int) -> set[str]:
+    """The IP addresses a host name resolves to"""
+    return {
+        str(info[4][0])
+        for info in socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+    }
+
+
+def _check_public_destination(url: str) -> None:
+    """Raises `UnsafeUriError` unless `url` is http(s) and only resolves to public addresses
+
+    The URIs whose labels are resolved come from harvested records, so whoever controls a
+    record controls what is requested. Without this check a record could make the harvester
+    probe internal services (loopback, private networks, the cloud metadata address) and
+    store what they answer as labels. Hosts are not restricted to a list, because labels are
+    resolved from whichever vocabulary a source refers to.
+
+    Parameters
+    ----------
+    url : str
+        URL that is about to be requested
+    """
+    parsed_url = urlparse(url)
+    hostname = parsed_url.hostname
+    if parsed_url.scheme not in ("http", "https") or not hostname:
+        raise UnsafeUriError(f"Not an http(s) URL with a host: {url}")
+
+    port = parsed_url.port or (443 if parsed_url.scheme == "https" else 80)
+    try:
+        addresses = _resolve_addresses(hostname, port)
+    except OSError as e:
+        raise UnsafeUriError(f"Cannot resolve {hostname}: {e}") from e
+    if not addresses:
+        raise UnsafeUriError(f"{hostname} does not resolve to an address")
+
+    for address in addresses:
+        ip = ipaddress.ip_address(address.split("%")[0])
+        if ip.version == 6 and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        if not ip.is_global or ip.is_multicast:
+            raise UnsafeUriError(f"{hostname} resolves to {ip}, which is not a public address")
+
+
+def _get_public(url: str, headers: dict[str, str]) -> requests.Response:
+    """GET `url`, checking the destination of the request and of every redirect
+
+    Parameters
+    ----------
+    url : str
+        URL to request
+    headers : dict[str, str]
+        Request headers
+
+    Returns
+    -------
+    requests.Response
+        The response that is not a redirect
+
+    Raises
+    ------
+    UnsafeUriError
+        If the URL or one of its redirects goes to a destination that is not allowed,
+        or there are more than `MAX_REDIRECTS` redirects
+    """
+    for _ in range(MAX_REDIRECTS + 1):
+        _check_public_destination(url)
+        response = requests.get(
+            url, headers=headers, timeout=REQUEST_TIMEOUT, allow_redirects=False
+        )
+        location = response.headers.get("Location")
+        if response.status_code not in REDIRECT_STATUS_CODES or not location:
+            return response
+        url = urljoin(url, location)
+
+    raise UnsafeUriError(f"More than {MAX_REDIRECTS} redirects")
 
 # DPV is published as versioned, non-content-negotiable GitHub Pages docs (the org
 # also moved from w3c.github.io to w3c-cg.github.io), but every term also has a
@@ -282,7 +367,7 @@ class resolvable_label_resolver:
                     "*/*;q=0.1"
                 )
             }
-            response = requests.get(uri, headers=headers, timeout=REQUEST_TIMEOUT)
+            response = _get_public(uri, headers)
             response.raise_for_status()
 
             # Try parsing with multiple formats
