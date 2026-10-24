@@ -6,3 +6,4 @@ rdflib~=7.6.0
 setuptools<82,>=44.1.0
 nose~=1.3.7
 requests~=2.34.2
+certifi>=2026.10.19 # not directly required (comes in through requests), pinned to drop the distrusted emSign ECC Root CA - G3
