@@ -12,6 +12,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [v1.7.3] - 2026-10-08
+
+### Added
+- feat: resolve country labels of agents during harvest (#172) by @Quinten in 0c81a04
+
+
+### Changed
+- chore: trigger ci by @Quinten in 99e950f
+- doc: update CHANGELOG.md for v1.7.2 by @LNDS-Sysadmins in 84d6351
+
+
+### Fixed
+- Merge pull request #173 from GenomicDataInfrastructure/fix/resolve-labels by @Quinten in a3e7310
+
+
 ## [v1.7.2] - 2026-09-23
 
 ### Changed
