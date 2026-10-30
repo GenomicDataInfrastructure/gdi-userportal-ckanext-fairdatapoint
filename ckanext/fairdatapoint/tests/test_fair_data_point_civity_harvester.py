@@ -5,6 +5,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from ckanext.dcat.metadata_profiles import MetadataProfileError
 from ckanext.fairdatapoint.harvesters.config import (
     get_harvester_int_setting,
     get_harvester_setting,
@@ -117,21 +118,41 @@ class TestFairDataPointCivityHarvester(unittest.TestCase):
         harvester.setup_record_to_package_converter(harvest_url, harvest_config_dict)
         mock_converter.assert_called_once_with("test_profile")
 
-    def test_setup_record_to_package_converter_raises_exception(self):
-        # Instantiate the harvester
+    @patch(
+        "ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter"
+        ".FairDataPointRecordToPackageConverter"
+        ".__init__"
+    )
+    @patch.object(fair_data_point_civity_harvester, "toolkit")
+    def test_setup_record_to_package_converter_without_profile_uses_main_profile(
+        self, mock_toolkit, mock_converter
+    ):
+        # Without a profile key, the deployment's main metadata profile applies.
+        mock_converter.return_value = None
+        mock_toolkit.config = {
+            "ckanext.dcat.metadata_profiles": "gdi_current",
+            "ckanext.dcat.metadata_profiles.main": "gdi_current",
+            "ckanext.dcat.metadata_profiles.gdi_current.rdf_profiles": "fairdatapoint_dcat_ap euro_dcat_ap_nl",
+        }
+
+        FairDataPointCivityHarvester().setup_record_to_package_converter(
+            "http://example.com", {}
+        )
+
+        mock_converter.assert_called_once_with(
+            ["fairdatapoint_dcat_ap", "euro_dcat_ap_nl"]
+        )
+
+    @patch.object(fair_data_point_civity_harvester, "toolkit")
+    def test_setup_record_to_package_converter_without_any_profile_raises_exception(
+        self, mock_toolkit
+    ):
+        # A deployment without metadata profiles or a default chain, and a source without a profile
+        mock_toolkit.config = {}
+
         harvester = FairDataPointCivityHarvester()
 
-        # Test data without PROFILE in the dictionary
-        harvest_url = "http://example.com"
-        harvest_config_dict = {}  # No PROFILE key
-
-        # Verify that an exception is raised when PROFILE is missing
-        with self.assertRaises(Exception) as context:
-            harvester.setup_record_to_package_converter(
-                harvest_url, harvest_config_dict
-            )
-
-        # Check the exception message
-        self.assertEqual(
-            str(context.exception), "[profile] not found in harvester config JSON"
-        )
+        with self.assertRaisesRegex(
+            MetadataProfileError, "No RDF profiles to parse with"
+        ):
+            harvester.setup_record_to_package_converter("http://example.com", {})

@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Sequence, Union
 
 from ckanext.dcat.processors import RDFParserException
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
@@ -14,17 +14,16 @@ log = logging.getLogger(__name__)
 
 
 class FairDataPointRecordToPackageConverter:
-    def __init__(self, profile: str):
-        # Space-separated list of profile names, e.g. "fairdatapoint_dcat_ap
-        # euro_dcat_ap_nl", mirroring ckanext-dcat's own
-        # `ckanext.dcat.rdf.profiles` config convention. A single profile
-        # name (no spaces) still works unchanged.
+    def __init__(self, profile: Union[str, Sequence[str]]):
+        # Space-separated RDF profile names (e.g. "fairdatapoint_dcat_ap euro_dcat_ap_nl", the
+        # `ckanext.dcat.rdf.profiles` convention), or a list of them for the chain of a metadata profile.
         self.profile = profile
 
     def record_to_package(
         self, guid: str, record: str, series_mapping=None
     ) -> Optional[Dict[str, Any]]:
-        parser = FairDataPointRDFParser(profiles=self.profile.split())
+        chain = self.profile.split() if isinstance(self.profile, str) else list(self.profile)
+        parser = FairDataPointRDFParser(profiles=chain)
 
         try:
             parser.parse(record, _format="ttl")
