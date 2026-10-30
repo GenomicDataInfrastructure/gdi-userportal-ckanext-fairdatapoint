@@ -25,11 +25,26 @@ The harvester runs in three stages. Each of these stages can be modified.
  2. Fetch stage. The fetch stage downloads the actual source data. In this phase, additional data from other sources may be included to better suit the DCAT profile as expected by CKAN;
  3. Import stage. The import stage does the actual import. How the RDF from the FAIR data point is mapped to CKAN packages and resources is determined by so-called application profiles. In case of a FAIR data point which uses custom fields, a profile must be created. A profile can be defined as a Python class in the ckanext.fairdatapoint.profiles.py file. The new profile must be registered in the [ckan.rdf.profiles] section of setup.py. What profile is being used for a particular is determined by the harvester configuration.
 
+### Selecting the metadata profile of a source
+
+A harvest source picks one of the metadata profiles the deployment enables (`GDI_METADATA_PROFILES`; see
+`docs/metadata-profiles.md` in `gdi-userportal-ckan-docker`) in its configuration:
+
 ``
 {
- "profiles": "fairdatapoint_dcat_ap"
+ "metadata_profile": "healthdcat_r8"
 }
 ``
+
+- Absent, `null` or empty: the main profile of the deployment.
+- A profile that is not enabled is rejected when the source is saved (the message names the enabled
+  profiles). One retired afterwards fails the harvest job with a gather error, with no fallback to the main profile.
+- The FAIR data point clean-up (tags, labels) runs whichever profile is selected. `gdi_current` already includes it
+  (`fairdatapoint_dcat_ap`); for other profiles `fairdatapoint_additive` is added after the profile's own RDF profiles.
+
+The older `profile` key still works as an explicit override. It is a space-separated chain of RDF profile names (for
+example `"fairdatapoint_dcat_ap euro_dcat_ap_nl"`), used exactly as written. Setting both `metadata_profile` and
+`profile` is rejected, and `profile` is checked against the installed RDF profiles when the source is saved.
 
 To run the harvester from the command line:
 
