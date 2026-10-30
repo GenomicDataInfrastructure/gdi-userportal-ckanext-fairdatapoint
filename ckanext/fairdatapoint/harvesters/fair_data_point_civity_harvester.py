@@ -5,6 +5,7 @@
 import json
 import logging
 
+from ckan import model
 from ckan.plugins import implements, toolkit
 
 from ckanext.dcat.interfaces import IDCATRDFHarvester
@@ -21,6 +22,7 @@ from ckanext.fairdatapoint.harvesters.config import (
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import (
     FairDataPointRecordProvider,
 )
+from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_converter import (
     FairDataPointRecordToPackageConverter,
 )
@@ -31,6 +33,8 @@ PROFILE = "profile"
 HARVEST_CATALOG = "harvest_catalogs"
 REQUEST_TIMEOUT = "request_timeout"
 DEFAULT_REQUEST_TIMEOUT = 100
+# Registered by ckanext-gdi-userportal; called by name so that this extension needs no import of it.
+CONFORMANCE_ACTION = "gdi_metadata_profile_conformance"
 
 # HARVEST_CATALOG_CONFIG = "ckanext.fairdatapoint.harvest_catalogs"
 
@@ -110,6 +114,59 @@ class FairDataPointCivityHarvester(CivityHarvester):
             profile = resolved.rdf_profiles
 
         self.record_to_package_converter = FairDataPointRecordToPackageConverter(profile)
+
+    def import_stage(self, harvest_object):
+        outcome = super().import_stage(harvest_object)
+        if outcome is True:
+            self._warn_when_not_conformant(harvest_object)
+        return outcome
+
+    def _warn_when_not_conformant(self, harvest_object):
+        """
+        Say in the harvest log which metadata profile the dataset just stored falls short of.
+
+        The profile is the one the source selected (or the deployment's main one), and the
+        answer is computed by the ``gdi_userportal`` extension when that is installed. It is
+        information only: it never blocks the import and never fails it.
+        """
+        try:
+            if (
+                not harvest_object.package_id
+                or self._get_object_extra(harvest_object, "status") == "delete"
+                or Identifier(harvest_object.guid).get_id_type() != "dataset"
+            ):
+                return
+            profile = self._resolve_profile(self._get_harvest_config(harvest_object.source.config)).name
+            if not profile:  # a raw RDF chain names no profile to hold the dataset to
+                return
+            try:
+                action = toolkit.get_action(CONFORMANCE_ACTION)
+            except KeyError:  # the extension that computes conformance is not installed
+                return
+            result = action(
+                {"ignore_auth": True, "user": self._get_user_name()}, {"id": harvest_object.package_id}
+            )
+            outcome = result["profiles"].get(profile)
+            if outcome and not outcome["conformant"]:
+                shortfall = ", ".join(item["property"] for item in outcome["missing"]) or outcome.get("reason")
+                log.warning(
+                    "Dataset %s (harvest object %s) does not conform to metadata profile '%s'"
+                    " at access layer %s: %s",
+                    harvest_object.package_id,
+                    harvest_object.id,
+                    profile,
+                    result.get("access_layer") or "unknown",
+                    shortfall,
+                )
+        except Exception as error:  # the dataset is already stored; this is only a notice
+            # The import committed already. A failed query must not leave the shared session
+            # needing a rollback, because the harvester updates its harvest object next.
+            model.Session.rollback()
+            log.warning(
+                "Could not compute the conformance of the dataset of harvest object %s: %s",
+                harvest_object.id,
+                error,
+            )
 
     @staticmethod
     def _resolve_profile(harvest_config_dict):

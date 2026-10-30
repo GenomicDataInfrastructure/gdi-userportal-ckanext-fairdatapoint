@@ -337,3 +337,139 @@ class TestHarvestJob:
         assert "source-1" in message
         assert "Metadata profile 'healthdcat_r8' is not enabled on this deployment. Enabled: gdi_current" in message
         assert job.id == "job-1"
+
+
+class TestConformanceWarning:
+    """The harvest log names the profile a stored dataset falls short of; it never changes the import."""
+
+    SHORT = {
+        "access_layer": "NON_PUBLIC",
+        "profiles": {
+            "gdi_current": {"conformant": True, "mandatory": 0, "missing": []},
+            "healthdcat_r8": {
+                "conformant": False,
+                "mandatory": 14,
+                "missing": [{"property": "health data access body", "fields": ["hdab"]}, {"property": "keyword", "fields": ["tags"]}],
+            },
+        },
+    }
+
+    @staticmethod
+    def harvest_object(source_config=None, guid=GUID, status="new", package_id="pkg-1"):
+        return SimpleNamespace(
+            id="object-1",
+            package_id=package_id,
+            guid=guid,
+            source=SimpleNamespace(id="source-1", url="https://fdp.example.org", config=json.dumps(source_config or {})),
+            extras=[SimpleNamespace(key="status", value=status)],
+        )
+
+    def import_(self, harvest_object, action_result=None, super_result=True, config=BOTH, get_action=None):
+        harvester = FairDataPointCivityHarvester()
+        harvester._get_user_name = lambda: "site-user"
+        action = mock.MagicMock(return_value=action_result or self.SHORT)
+        get_action = get_action or mock.MagicMock(return_value=action)
+        with mock.patch.object(harvester_module, "toolkit", SimpleNamespace(config=config, get_action=get_action)), \
+                mock.patch.object(CivityHarvester, "import_stage", return_value=super_result):
+            result = harvester.import_stage(harvest_object)
+        return result, action, get_action
+
+    def warnings(self, caplog):
+        return [r.getMessage() for r in caplog.records if r.levelno == logging.WARNING]
+
+    def test_names_the_profile_the_layer_and_what_is_missing(self, caplog):
+        with caplog.at_level(logging.INFO, logger=harvester_module.log.name):
+            result, action, get_action = self.import_(self.harvest_object({"metadata_profile": "healthdcat_r8"}))
+
+        assert result is True
+        get_action.assert_called_once_with("gdi_metadata_profile_conformance")
+        action.assert_called_once_with({"ignore_auth": True, "user": "site-user"}, {"id": "pkg-1"})
+        assert self.warnings(caplog) == [
+            "Dataset pkg-1 (harvest object object-1) does not conform to metadata profile 'healthdcat_r8'"
+            " at access layer NON_PUBLIC: health data access body, keyword"
+        ]
+
+    def test_holds_a_source_without_a_profile_to_the_main_profile(self, caplog):
+        # gdi_current has no mandatory properties, so only a main profile with rules can fall short
+        no_layer = {
+            "access_layer": None,
+            "profiles": {"healthdcat_r8": {"conformant": False, "mandatory": 0, "missing": [], "reason": "access rights is missing"}},
+        }
+        with caplog.at_level(logging.INFO, logger=harvester_module.log.name):
+            self.import_(self.harvest_object(), action_result=no_layer, config=R8_IS_MAIN)
+
+        assert self.warnings(caplog) == [
+            "Dataset pkg-1 (harvest object object-1) does not conform to metadata profile 'healthdcat_r8'"
+            " at access layer unknown: access rights is missing"
+        ]
+
+    def test_a_source_held_to_gdi_current_never_warns(self, caplog):
+        satisfied = {"access_layer": None, "profiles": {"gdi_current": {"conformant": True, "mandatory": 0, "missing": []}}}
+        with caplog.at_level(logging.INFO, logger=harvester_module.log.name):
+            self.import_(self.harvest_object(), action_result=satisfied)
+
+        assert self.warnings(caplog) == []
+
+    def test_holds_the_dataset_only_to_the_profile_of_its_source(self, caplog):
+        with caplog.at_level(logging.INFO, logger=harvester_module.log.name):
+            self.import_(self.harvest_object({"metadata_profile": "gdi_current"}))  # r8 fails, gdi_current does not
+
+        assert self.warnings(caplog) == []
+
+    def test_a_conforming_dataset_logs_nothing(self, caplog):
+        fine = {"access_layer": "PUBLIC", "profiles": {"healthdcat_r8": {"conformant": True, "mandatory": 10, "missing": []}}}
+        with caplog.at_level(logging.DEBUG, logger=harvester_module.log.name):
+            self.import_(self.harvest_object({"metadata_profile": "healthdcat_r8"}), action_result=fine)
+
+        assert caplog.records == []
+
+    def test_a_raw_rdf_chain_names_no_profile_to_check(self):
+        _, action, get_action = self.import_(self.harvest_object({"profile": "fairdatapoint_dcat_ap"}))
+
+        get_action.assert_not_called()
+        action.assert_not_called()
+
+    @pytest.mark.parametrize("super_result", [False, "unchanged"])
+    def test_only_a_stored_dataset_is_checked(self, super_result):
+        result, action, _ = self.import_(self.harvest_object({"metadata_profile": "healthdcat_r8"}), super_result=super_result)
+
+        assert result == super_result
+        action.assert_not_called()
+
+    def test_a_deleted_dataset_is_not_checked(self):
+        _, action, _ = self.import_(self.harvest_object({"metadata_profile": "healthdcat_r8"}, status="delete"))
+
+        action.assert_not_called()
+
+    def test_a_series_is_not_checked(self):
+        _, action, _ = self.import_(self.harvest_object({"metadata_profile": "healthdcat_r8"}, guid="dataseries=https://fdp.example.org/series/1"))
+
+        action.assert_not_called()
+
+    def test_a_deployment_without_the_conformance_action_imports_quietly(self, caplog):
+        with caplog.at_level(logging.DEBUG, logger=harvester_module.log.name):
+            result, _, _ = self.import_(
+                self.harvest_object({"metadata_profile": "healthdcat_r8"}), get_action=mock.MagicMock(side_effect=KeyError("gdi_metadata_profile_conformance"))
+            )
+
+        assert result is True
+        assert caplog.records == []
+
+    def test_a_failing_check_never_fails_the_import(self, caplog):
+        broken = mock.MagicMock(return_value=mock.MagicMock(side_effect=RuntimeError("boom")))
+        with caplog.at_level(logging.INFO, logger=harvester_module.log.name), \
+                mock.patch.object(harvester_module, "model") as model:
+            result, _, _ = self.import_(self.harvest_object({"metadata_profile": "healthdcat_r8"}), get_action=broken)
+
+        assert result is True
+        # a database error inside the check must not leave the shared session needing a rollback
+        model.Session.rollback.assert_called_once_with()
+        assert self.warnings(caplog) == ["Could not compute the conformance of the dataset of harvest object object-1: boom"]
+
+    def test_a_source_whose_profile_was_retired_still_imports_what_the_base_stored(self, caplog):
+        with caplog.at_level(logging.INFO, logger=harvester_module.log.name):
+            result, action, _ = self.import_(self.harvest_object({"metadata_profile": "healthdcat_r8"}), config=ONLY_GDI)
+
+        assert result is True
+        action.assert_not_called()
+        assert len(self.warnings(caplog)) == 1 and "Could not compute" in self.warnings(caplog)[0]
