@@ -150,9 +150,10 @@ class TestHealthDcatR8:
 
         assert dataset["alternative_title"] == ["Another title"]
         assert dataset["has_structured_data"] is True
-        assert dataset["hdab"][0]["email"] == "hdab@example.org"
-        assert dataset["hdab"][0]["url"] == "https://example.org/contact"
-        assert dataset["hdab"][0]["telephone"] == "+31 20 555 0100"
+        # a health agent of R8 has any number of e-mail addresses, contact pages and telephone numbers
+        assert dataset["hdab"][0]["email"] == ["hdab@example.org"]
+        assert dataset["hdab"][0]["url"] == ["https://example.org/contact"]
+        assert dataset["hdab"][0]["telephone"] == ["+31 20 555 0100"]
 
     def test_keeps_the_fair_data_point_clean_up(self, run):
         dataset = run({"metadata_profile": "healthdcat_r8"})
