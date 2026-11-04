@@ -156,9 +156,10 @@ class CivityHarvester(HarvesterBase):
                 # TODO
                 #  Deleted object is marked as not being current here already. When the actual deletion of the package
                 #  fails in the import stage, an orphan package will remain in existence and never be deleted.
-                model.Session.query(HarvestObject).filter_by(guid=guid).update(
-                    {"current": False}, False
-                )
+                # Only the objects of this source: another source can hold the same guid
+                model.Session.query(HarvestObject).filter_by(
+                    guid=guid, harvest_source_id=harvest_job.source.id
+                ).update({"current": False}, False)
                 obj.save()
                 result.append(obj.id)
 
@@ -326,12 +327,16 @@ class CivityHarvester(HarvesterBase):
             start_run(harvest_object.harvest_job_id)
 
             if datatype == "dataset":
-                # Build mapping from dataseries GUID to package ID for all active dataset_series in the database
+                # Build mapping from dataseries GUID to package ID for the active dataset_series this source
+                # imported: a dataset is linked to the series of its own source only
                 series_results = model.Session.query(model.PackageExtra.value, model.Package.id) \
                     .join(model.Package) \
+                    .join(HarvestObject, HarvestObject.package_id == model.Package.id) \
                     .filter(model.PackageExtra.key == 'guid') \
                     .filter(model.Package.type == 'dataset_series') \
                     .filter(model.Package.state == 'active') \
+                    .filter(HarvestObject.harvest_source_id == harvest_object.harvest_source_id) \
+                    .distinct() \
                     .all()
                 series_mapping = {guid: {"id": series_id} for guid, series_id in series_results}
                 package_dict = self.record_to_package_converter.record_to_package(
@@ -445,6 +450,7 @@ class CivityHarvester(HarvesterBase):
         # 🔧 Clear previous current HarvestObjects with the same GUID
         model.Session.query(HarvestObject).filter(
             HarvestObject.guid == harvest_object.guid,
+            HarvestObject.harvest_source_id == harvest_object.harvest_source_id,
             HarvestObject.current == True,
             HarvestObject.id != harvest_object.id
         ).update({"current": False}, synchronize_session=False)
