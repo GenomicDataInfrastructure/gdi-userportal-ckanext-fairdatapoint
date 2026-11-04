@@ -16,6 +16,7 @@ import ckan.plugins.toolkit as toolkit
 from ckan import model
 from sqlalchemy.exc import IntegrityError
 
+from ckanext.dcat.harvesters.invalid_values import call_dropping_invalid_values
 from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 from ckanext.fairdatapoint.run_scope import start_run
 from ckanext.harvest.harvesters import HarvesterBase
@@ -281,6 +282,8 @@ class CivityHarvester(HarvesterBase):
         logger = logging.getLogger(__name__ + ".import_stage")
 
         logger.debug("Starting import stage for harvest_object [%s]", harvest_object.id)
+        # The harvester is a singleton: what belongs to this import is kept in a list that is passed on.
+        warnings = []
 
         self.setup_record_to_package_converter(
             harvest_object.source.url,
@@ -418,7 +421,7 @@ class CivityHarvester(HarvesterBase):
                 package_dict[ID] = str(uuid.uuid4())
                 
             package_id = self._create_or_update_package(
-                package_dict, "create", context, harvest_object
+                package_dict, "create", context, harvest_object, warnings
             )
 
         elif status == "change":
@@ -427,13 +430,13 @@ class CivityHarvester(HarvesterBase):
 
             # Update existing package
             package_id = self._create_or_update_package(
-                package_dict, "update", context, harvest_object
+                package_dict, "update", context, harvest_object, warnings
             )
 
         # In case of success (package_id is defined in that case), create the resources
         if package_id:
             if not self._create_resources(
-                resources, package_id, package_dict["title"], context, harvest_object
+                resources, package_id, package_dict["title"], context, harvest_object, warnings
             ):
                 return False
         else:
@@ -452,12 +455,25 @@ class CivityHarvester(HarvesterBase):
 
         model.Session.commit()
 
+        for warning in warnings:
+            self._save_object_error(warning, harvest_object, "Import")
+
         logger.debug("Finished import stage for harvest_object [%s]", harvest_object.id)
         return True
 
+    def _remember_warning(self, warning, warnings, harvest_object):
+        """
+        Keep a warning until the import has finished, because saving it earlier would commit half an
+        import. Without a list to keep it in, it is saved at once.
+        """
+        if warnings is None:
+            self._save_object_error(warning, harvest_object, "Import")
+        else:
+            warnings.append(warning)
+
 
     def _create_or_update_package(
-        self, package_dict, create_or_update, context, harvest_object
+        self, package_dict, create_or_update, context, harvest_object, warnings=None
     ):
         if "revision_id" in package_dict.keys():
             package_dict.pop("revision_id")
@@ -469,21 +485,32 @@ class CivityHarvester(HarvesterBase):
         # collide with itself.
         attempts = MAX_NAME_CONFLICT_RETRIES if is_create else 1
 
+        def save_reference():
+            harvest_object.package_id = package_dict[ID]
+            harvest_object.current = True
+            harvest_object.add()
+            model.Session.execute(
+                "SET CONSTRAINTS harvest_object_package_id_fkey DEFERRED"
+            )
+            model.Session.flush()
+
         for attempt in range(1, attempts + 1):
             if is_create:
                 # (Re)do the harvest object bookkeeping every attempt: the
                 # rollback below after a name conflict wipes out whatever was
                 # flushed here on a prior attempt.
-                harvest_object.package_id = package_dict[ID]
-                harvest_object.current = True
-                harvest_object.add()
-                model.Session.execute(
-                    "SET CONSTRAINTS harvest_object_package_id_fkey DEFERRED"
-                )
-                model.Session.flush()
+                save_reference()
 
             try:
-                result = toolkit.get_action(action)(context.copy(), package_dict)
+                # CKAN rolls back on a validation error, so a create redoes the bookkeeping.
+                result, warning = call_dropping_invalid_values(
+                    toolkit.get_action(action),
+                    context,
+                    package_dict,
+                    before_retry=save_reference if is_create else None,
+                )
+                if warning:
+                    self._remember_warning(warning, warnings, harvest_object)
                 log.info(
                     "Successful [%s] for package with id [%s]", create_or_update, result
                 )
@@ -559,7 +586,7 @@ class CivityHarvester(HarvesterBase):
         return False
 
     def _create_resources(
-        self, resource_dicts, package_id, package_title, context, harvest_object
+        self, resource_dicts, package_id, package_title, context, harvest_object, warnings=None
     ):
         result = True
 
@@ -571,10 +598,15 @@ class CivityHarvester(HarvesterBase):
                 resource_dict.pop("revision_id")
 
             resource_dict["package_id"] = package_id
+            resource_label = resource_dict.get("name") or resource_dict.get("id")
             try:
-                resource_dict = toolkit.get_action("resource_create")(
-                    context.copy(), resource_dict
+                resource_dict, warning = call_dropping_invalid_values(
+                    toolkit.get_action("resource_create"), context, resource_dict
                 )
+                if warning:
+                    self._remember_warning(
+                        "%s (resource %s)" % (warning, resource_label), warnings, harvest_object
+                    )
                 log.info(
                     "Created resource with id [%s]",
                     resource_dict.get("id", "NO ID Found"),
