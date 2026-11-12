@@ -87,8 +87,19 @@ class TestTermUpdates:
             [self.URI_EN_ONLY, self.URI_UNKNOWN, self.URI_COMPLETE]
         )
 
-        get_action.return_value.assert_called_once()
+        get_action.assert_any_call("term_translation_show")
         assert sorted(out_list) == sorted([self.URI_EN_ONLY, self.URI_UNKNOWN])
+
+    @patch("ckanext.fairdatapoint.labels.resolve_languages", return_value=("en", "nl", "de"))
+    @patch("ckan.plugins.toolkit.get_action")
+    def test_a_form_language_of_the_schema_is_resolved_too(self, get_action, _languages):
+        get_action.return_value.return_value = self.KNOWN_DATA
+
+        missing = get_missing_languages([self.URI_COMPLETE])
+
+        assert missing == {self.URI_COMPLETE: {"de"}}
+        asked = get_action.return_value.call_args.args[1]
+        assert sorted(asked["lang_codes"]) == ["de", "en", "nl"]
 
     @patch("ckan.plugins.toolkit.get_action")
     def test_missing_languages_are_reported_per_term(self, get_action):
@@ -490,17 +501,17 @@ class TestResolveLabelsEdgeCases:
         get_missing_languages.return_value = {
             "http://www.wikidata.org/entity/Q29937289": {"en", "nl"}
         }
-        # Translation list with only unsupported language codes (not in RESOLVE_LANGUAGES)
+        # Translation list with only unsupported language codes (not in the languages of the catalogue)
         translation_list = [
             {
                 "term": "http://www.wikidata.org/entity/Q29937289",
                 "term_translation": "Datenkatalog",
-                "lang_code": "de",  # Not in RESOLVE_LANGUAGES ("en", "nl")
+                "lang_code": "de",  # Not one of the languages of the catalogue ("en", "nl")
             },
             {
                 "term": "http://www.wikidata.org/entity/Q29937289",
                 "term_translation": "カタログ",
-                "lang_code": "ja",  # Not in RESOLVE_LANGUAGES
+                "lang_code": "ja",  # Not one of the languages of the catalogue
             },
         ]
 

@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from ckan.plugins import toolkit
 from rdflib import URIRef
 
+from ckanext.fairdatapoint.languages import resolve_languages
 from ckanext.fairdatapoint.resolver import resolvable_label_resolver
 from ckanext.fairdatapoint.run_scope import forget_finished_runs, run_store
 
@@ -107,10 +108,6 @@ def _remember_unavailable_languages(
             unavailable.setdefault(term, set()).update(not_returned)
 
 
-# Languages to resolve labels in
-# TODO language codes should be dynamic
-RESOLVE_LANGUAGES = ("en", "nl")
-
 NESTED_FIELD_TRANSLATIONS = {
     "qualified_relation": {"role"},
     "qualified_attribution": {"role", "agent"},
@@ -190,7 +187,7 @@ def resolve_labels(package_dict: dict) -> int:
 
 
 def get_missing_languages(
-        terms: list[str], languages: list[str] = RESOLVE_LANGUAGES
+        terms: list[str], languages: list[str] | None = None
 ) -> dict[str, set[str]]:
     """Gets, per term, the languages CKAN has no translation for yet
 
@@ -202,7 +199,8 @@ def get_missing_languages(
     terms : list[str]
         List of labels that harvested, that need to be checked if they are resolved
     languages : list[str], optional
-        List of language codes that need to be resolved, default is 'en' and 'nl'.
+        List of language codes that need to be resolved, default is the languages of the catalogue
+        (`resolve_languages`: 'en', 'nl' and the form languages of the dataset schema).
 
     Returns
     -------
@@ -210,6 +208,7 @@ def get_missing_languages(
         Terms that are missing a translation, with the language codes they are missing.
         Terms that are known in every language are not included.
     """
+    languages = list(languages) if languages is not None else list(resolve_languages())
     term_set = set(terms)
 
     translation_table = toolkit.get_action("term_translation_show")(
@@ -229,7 +228,7 @@ def get_missing_languages(
 
 
 def get_list_unresolved_terms(
-        terms: list[str], languages: list[str] = RESOLVE_LANGUAGES
+        terms: list[str], languages: list[str] | None = None
 ) -> list[str]:
     """This function gets a list of terms not fully known by CKAN, based on an input list
 
@@ -240,7 +239,7 @@ def get_list_unresolved_terms(
     terms : list[str]
         List of labels that harvested, that need to be checked if they are resolved
     languages : list[str], optional
-        List of language codes that need to be resolved, default is 'en' and 'nl'.
+        List of language codes that need to be resolved, default is the languages of the catalogue.
 
     Returns
     -------
