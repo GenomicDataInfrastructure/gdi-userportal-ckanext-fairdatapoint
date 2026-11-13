@@ -30,11 +30,11 @@ _last_run_check = 0.0
 
 
 def start_run(run_id: str | None) -> None:
-    """Marks the harvest job (run) the labels are resolved for from now on
+    """Marks the harvest job (run) whose labels are being resolved
 
-    Forgets what is cached for runs that have finished in the meantime, when the run
-    changes. This is called for every record of a harvest job, so the database is not
-    asked again while it is the same job. Without a run, nothing is cached per run.
+    When the run changes, the caches of runs that have finished are dropped. This is called
+    for every record, so the database is only asked again when the run changes. Without a
+    run, nothing is cached per run.
 
     Parameters
     ----------

@@ -23,7 +23,7 @@ def validate_tags(values_list: List[Dict]) -> List:
     """
     Validates tags strings to contain allowed characters, replaces others with spaces
     """
-    illegal_pattern = re.compile("[^A-Za-z0-9\- _\.]")
+    illegal_pattern = re.compile(r"[^A-Za-z0-9\- _\.]")
     tags = []
     for item in values_list:
         tag_value = item["name"]
@@ -40,7 +40,7 @@ def validate_tags(values_list: List[Dict]) -> List:
             if find_illegal:
                 log.warning(
                     f"Tag {tag_value} contains values other than alphanumeric characters, spaces, hyphens, "
-                    f"underscores or dots, they will be replaces with spaces"
+                    f"underscores or dots, they will be replaced with spaces"
                 )
                 tag = {"name": re.sub(illegal_pattern, " ", tag_value)}
                 tags.append(tag)
@@ -50,7 +50,7 @@ def validate_tags(values_list: List[Dict]) -> List:
 
 
 def sanitize_tags_translated(tags_translated: Dict[str, List[str]]) -> Dict[str, List[str]]:
-    """Remove invalid multilingual tags to satisfy CKAN length rules."""
+    """Drop the empty, too short and too long tags of each language, and replace illegal characters."""
 
     sanitized: Dict[str, List[str]] = {}
 

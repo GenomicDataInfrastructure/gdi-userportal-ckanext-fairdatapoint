@@ -1,6 +1,6 @@
 <!-- SPDX-FileCopyrightText: 2024 Stichting Health-RI -->
 
-<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
 
 ## 🚀 Pull Request Checklist
 
@@ -17,7 +17,7 @@
   - `[ ]` List the major changes you've made, ideally organized by commit or feature.
 
 - **Testing:**
-  - `[ ]` Describe how the changes have been tested. Include any relevant details about the testing environment and the test cases.
+  - `[ ]` Describe how the changes have been tested. Include the test command you ran (see CONTRIBUTING.md), its result and any relevant details about the testing environment.
 
 - **Screenshots (if applicable):**
   - `[ ]` If your changes are visual, include screenshots to help explain your changes.
@@ -26,7 +26,7 @@
   - `[ ]` Add any other information that might be useful for reviewers, such as considerations, discussions, or dependencies.
 
 - **Checklist:**
-  - `[ ]` I have checked that my code adheres to the project's style guidelines and that my code is well-commented.
+  - `[ ]` I have checked that my code follows the existing code in this repository and that it is well-commented.
   - `[ ]` I have performed self-review of my own code and corrected any misspellings.
   - `[ ]` I have made corresponding changes to the documentation (if applicable).
   - `[ ]` My changes generate no new warnings or errors.

@@ -26,10 +26,8 @@ All types of contributions are encouraged and valued. See the [Table of Contents
   - [Reporting Bugs](#reporting-bugs)
   - [Suggesting Enhancements](#suggesting-enhancements)
   - [Your First Code Contribution](#your-first-code-contribution)
-  - [Improving The Documentation](#improving-the-documentation)
 - [Styleguides](#styleguides)
   - [Commit Messages](#commit-messages)
-- [Join The Project Team](#join-the-project-team)
 
 
 ## Code of Conduct
@@ -37,18 +35,18 @@ All types of contributions are encouraged and valued. See the [Table of Contents
 This project and everyone participating in it is governed by the
 [CKAN Extension GDI Fairdatapoint Code of Conduct](./CODE_OF_CONDUCT.md).
 By participating, you are expected to uphold this code. Please report unacceptable behavior
-to <>.
+to the project's contact in the Code of Conduct.
 
 
 ## I Have a Question
 
 > If you want to ask a question, we assume that you have read the available [Documentation](https://genomicdatainfrastructure.github.io/gdi-userportal-docs/).
 
-Before you ask a question, it is best to search for existing [Issues](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-gdi-userportal/issues) that might help you. In case you have found a suitable issue and still need clarification, you can write your question in this issue. It is also advisable to search the internet for answers first.
+Before you ask a question, it is best to search for existing [Issues](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/issues) that might help you. In case you have found a suitable issue and still need clarification, you can write your question in this issue. It is also advisable to search the internet for answers first.
 
 If you then still feel the need to ask a question and need clarification, we recommend the following:
 
-- Open an [Issue](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-gdi-userportal/issues/new).
+- Open an [Issue](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/issues/new).
 - Provide as much context as you can about what you're running into.
 - Provide project and platform versions (nodejs, npm, etc), depending on what seems relevant.
 
@@ -83,7 +81,7 @@ A good bug report shouldn't leave others needing to chase you up for more inform
 
 - Make sure that you are using the latest version.
 - Determine if your bug is really a bug and not an error on your side e.g. using incompatible environment components/versions (Make sure that you have read the [documentation](https://genomicdatainfrastructure.github.io/gdi-userportal-docs/). If you are looking for support, you might want to check [this section](#i-have-a-question)).
-- To see if other users have experienced (and potentially already solved) the same issue you are having, check if there is not already a bug report existing for your bug or error in the [bug tracker](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-gdi-userportal/labels/bug).
+- To see if other users have experienced (and potentially already solved) the same issue you are having, check if there is not already a bug report existing for your bug or error in the [bug tracker](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/labels/bug).
 - Also make sure to search the internet (including Stack Overflow) to see if users outside of the GitHub community have discussed the issue.
 - Collect information about the bug:
   - Stack trace (Traceback)
@@ -95,7 +93,7 @@ A good bug report shouldn't leave others needing to chase you up for more inform
 <!-- omit in toc -->
 #### How Do I Submit a Good Bug Report?
 
-> You must never report security related issues, vulnerabilities or bugs including sensitive information to the issue tracker, or elsewhere in public. Instead sensitive bugs must be sent by email to <>.
+> Do not report security issues in the public issue tracker. Report them privately through a GitHub security advisory on the repository.
 <!-- You may add a PGP key to allow the messages to be sent encrypted as well. -->
 
 We use GitHub issues to track bugs and errors. If you run into an issue with the project:
@@ -135,30 +133,28 @@ Enhancement suggestions are tracked as [GitHub issues](https://github.com/Genomi
 - Provide a **step-by-step description of the suggested enhancement** in as many details as possible.
 - **Describe the current behavior** and **explain which behavior you expected to see instead** and why. At this point you can also tell which alternatives do not work for you.
 - You may want to **include screenshots and animated GIFs** which help you demonstrate the steps or point out the part which the suggestion is related to. You can use [this tool](https://www.cockos.com/licecap/) to record GIFs on macOS and Windows, and [this tool](https://github.com/colinkeenan/silentcast) or [this tool](https://github.com/GNOME/byzanz) on Linux. <!-- this should only be included if the project has a GUI -->
-- **Explain why this enhancement would be useful** to most CKAN Extension GDI  User Portal users. You may also want to point out the other projects that solved it better and which could serve as inspiration.
+- **Explain why this enhancement would be useful** to most GDI User Portal users. You may also want to point out the other projects that solved it better and which could serve as inspiration.
 
 <!-- You might want to create an issue template for enhancement suggestions that can be used as a guide and that defines the structure of the information to be included. If you do so, reference it here in the description. -->
 
 ### Your First Code Contribution
-<!-- TODO
-include Setup of env, IDE and typical getting started instructions?
 
--->
+Install the package and the development requirements in a CKAN virtualenv, as described in the
+[README](./README.md#developer-installation). Run the tests from the repository root against a CKAN
+database configured in `test.ini`:
 
-### Improving The Documentation
-<!-- TODO
-Updating, improving and correcting the documentation
+```bash
+pytest --ckan-ini=test.ini ckanext/fairdatapoint
+```
 
--->
+No linter is configured for this repository.
 
 ## Styleguides
+
 ### Commit Messages
-<!-- TODO
 
--->
-
-## Join The Project Team
-<!-- TODO -->
+Use semantic commit prefixes (`feat:`, `fix:`, `refactor:`, `docs:`, `test:`, `chore:`), an imperative
+subject of at most 72 characters, and a body that explains why when the reason is not obvious.
 
 <!-- omit in toc -->
 ## Attribution

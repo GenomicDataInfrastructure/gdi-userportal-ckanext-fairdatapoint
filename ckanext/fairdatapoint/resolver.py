@@ -120,12 +120,9 @@ ICD10_URI_RE = re.compile(
 ICD10_CATEGORY_RE = re.compile(r"[A-Z]\d{2}")
 ICD10_BLOCK_RANGE_RE = re.compile(r"\(([A-Z]\d{2})-([A-Z]\d{2})\)")
 
-# DPV is published as versioned, non-content-negotiable GitHub Pages docs (the org
-# also moved from w3c.github.io to w3c-cg.github.io), but every term also has a
-# canonical https://w3id.org/dpv... identifier that *does* content-negotiate and
-# always resolves to the current DPV release. Doc-page URIs are rewritten to their
-# w3id.org equivalent so DPV terms resolve regardless of which GitHub Pages mirror
-# or version a harvested source happened to reference.
+# DPV terms are often referenced by their GitHub Pages doc URLs, which are versioned and do not
+# content-negotiate. Every term also has a canonical https://w3id.org/dpv... identifier that
+# does, and resolves to the current DPV release. Doc-page URIs are rewritten to that identifier.
 DPV_DOC_HOSTS = {"w3c.github.io", "w3c-cg.github.io"}
 DPV_DOC_PATH_RE = re.compile(r"^/dpv/(?P<version>[^/]+)/(?P<module>[^/]+)/?$")
 
@@ -296,8 +293,8 @@ class resolvable_label_resolver:
         languages = resolve_languages()
         subject = URIRef(_canonicalize_uri(str(subject)))
 
-        # I am aware the dictionary gets overwritten. I am assuming SKOS.prefLabel is the most
-        # "authortive" one and therefore it will overwrite the preceding labels.
+        # A later predicate overwrites an earlier one for the same language. SKOS.prefLabel comes
+        # last because it is the most authoritative label.
         for label_predicate in [SDO.name, RDFS.label, SKOS.prefLabel]:
             if (subject, label_predicate, None) in self.label_graph:
                 # Check if it contains label_predicate for the subject
@@ -356,7 +353,9 @@ class resolvable_label_resolver:
             return False
 
     def _load_bioontology_graph(self, uri: str) -> bool:
-        """Load RDF from BioOntology API using JSON-LD format.
+        """Load RDF from the BioPortal (BioOntology) API using JSON-LD format.
+
+        Needs the ckanext.fairdatapoint.bioportal_api_key setting; without it the URI is not loaded.
 
         Parameters
         ----------
@@ -605,7 +604,7 @@ class resolvable_label_resolver:
         ckan_translation_list = []
 
         """
-        Now turn the dictionary into CKAN format
+        Turn the dictionary into CKAN format
         It should be as follows:
 
         Parameters:

@@ -6,7 +6,7 @@
 
 import logging
 import re
-from typing import Dict, Iterable, Union
+from typing import Iterable, KeysView, Union
 from collections import deque
 
 import requests
@@ -14,7 +14,10 @@ from rdflib import DCAT, DCTERMS, RDF, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.term import Node
 from requests import HTTPError, JSONDecodeError
 
-from ckanext.fairdatapoint.harvesters.domain.fair_data_point import FairDataPoint
+from ckanext.fairdatapoint.harvesters.domain.fair_data_point import (
+    REQUEST_TIMEOUT,
+    FairDataPoint,
+)
 from ckanext.fairdatapoint.harvesters.domain.graph_to_fdp_record_mapper import (
     GraphToFdpRecordMapper,
 )
@@ -22,7 +25,6 @@ from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 
 LDP = Namespace("http://www.w3.org/ns/ldp#")
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
-REQUEST_TIMEOUT = 100 # seconds
 
 log = logging.getLogger(__name__)
 
@@ -41,14 +43,14 @@ class FairDataPointRecordProvider:
         self.harvest_catalogs = harvest_catalogs
         self.request_timeout = request_timeout
 
-    def get_record_ids(self) -> Dict.keys:
+    def get_record_ids(self) -> KeysView[str]:
         log.debug(
             "FAIR Data Point get_records from {}".format(
                 self.fair_data_point.fdp_end_point
             )
         )
         result = dict()
-        for fdp_record in self._breath_first_search_records(
+        for fdp_record in self._breadth_first_search_records(
             self.fair_data_point.fdp_end_point
         ):
             if self.harvest_catalogs and fdp_record.is_catalog():
@@ -67,7 +69,8 @@ class FairDataPointRecordProvider:
 
     def get_record_by_id(self, guid: str) -> str:
         """
-        Get additional information for FDP record.
+        Return the record at `guid` as Turtle, with the information of its distributions and
+        contact point merged into it.
         """
         log.debug(
             "FAIR data point get_record_by_id from {} for {}".format(
@@ -120,7 +123,8 @@ class FairDataPointRecordProvider:
         self, g: Graph, subject_uri: URIRef, contact_point_uri: URIRef
     ):
         """
-        Replaces contact point URI with a VCard
+        Replace an ORCID contact point with a VCard that holds the name from the ORCID record.
+        Other contact points are left as they are.
         """
 
         if "orcid" in str(contact_point_uri):
@@ -157,7 +161,7 @@ class FairDataPointRecordProvider:
         graph = self.fair_data_point.get_graph(url)
         return mapper.map(graph)
 
-    def _breath_first_search_records(self, start_url: str):
+    def _breadth_first_search_records(self, start_url: str):
         queue = deque([start_url])
         visited = set()
         while queue:

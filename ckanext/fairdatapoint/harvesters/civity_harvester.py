@@ -29,8 +29,6 @@ log = logging.getLogger(__name__)
 
 _PACKAGE_NAME_KEY_VIOLATION_RE = re.compile(r'unique constraint "package_name_key"')
 
-RESOLVE_LABELS = "resolve_labels"
-
 # A new package's name is picked via a check-then-insert (see
 # HarvesterBase._gen_new_name): another harvest process can commit a package
 # under that same name in the gap between the check and our own insert. This
@@ -52,7 +50,7 @@ class CivityHarvesterException(Exception):
 
 class CivityHarvester(HarvesterBase):
     """
-    A Harvester base class for multiple Civity harvesters. This class contains the harvester bookkeeping and delegates
+    A Harvester base class for multiple harvesters. This class contains the harvester bookkeeping and delegates
     the harvester specific work to a RecordProvider (to access records from a harvest source) and a
     RecordToPackageConverter to convert proprietary data from the harvest source to CKAN packages.
     """
@@ -84,7 +82,9 @@ class CivityHarvester(HarvesterBase):
               occur.
             - returning a list with all the ids of the created HarvestObjects.
             - to abort the harvest, create a HarvestGatherError and raise an
-              exception. Any created HarvestObjects will be deleted.
+              exception. Any created HarvestObjects will be deleted. Subclasses
+              may store the error and return None instead, which keeps a
+              ckanext-harvest gather consumer running.
 
         :param harvest_job: HarvestJob object
         :returns: A list of HarvestObject ids
@@ -153,19 +153,15 @@ class CivityHarvester(HarvesterBase):
                     package_id=guids_to_package_ids[guid],
                     extras=[HOExtra(key="status", value="delete")],
                 )
-                # TODO
-                #  Deleted object is marked as not being current here already. When the actual deletion of the package
-                #  fails in the import stage, an orphan package will remain in existence and never be deleted.
-                # Only the objects of this source: another source can hold the same guid
+                # TODO: the old objects are marked not current already, so if deleting the package
+                # fails in the import stage, the package is orphaned and never deleted again.
+                # Only this source's objects: another source can hold the same guid.
                 model.Session.query(HarvestObject).filter_by(
                     guid=guid, harvest_source_id=harvest_job.source.id
                 ).update({"current": False}, False)
                 obj.save()
                 result.append(obj.id)
 
-        # Why is this needed? An empty list seems a valid result of this stage. There is simply nothing to do
-        # if len(result) == 0:
-        #     result = None
 
         logger.debug("Finished gather_stage for job: [%r]", harvest_job)
 
@@ -180,14 +176,11 @@ class CivityHarvester(HarvesterBase):
             - saving the content in the provided HarvestObject.
             - creating and storing any suitable HarvestObjectErrors that may
               occur.
-            - returning True if everything is ok (ie the object should now be
-              imported), "unchanged" if the object didn't need harvesting after
-              all (ie no error, but don't continue to import stage) or False if
-              there were errors.
+            - returning True if everything is ok (the object should now be
+              imported) or False if there were errors.
 
         :param harvest_object: HarvestObject object
-        :returns: True if successful, 'unchanged' if nothing to import after
-                  all, False if not successful
+        :returns: True if successful, False if not successful
         """
 
         logger = logging.getLogger(__name__ + ".fetch_stage")
@@ -270,21 +263,19 @@ class CivityHarvester(HarvesterBase):
             - creating and storing any suitable HarvestObjectErrors that may
               occur.
             - creating the HarvestObject - Package relation (if necessary)
-            - returning True if the action was done, "unchanged" if the object
-              didn't need harvesting after all or False if there were errors.
+            - returning True if the action was done or False if there were errors.
 
-        NB You can run this stage repeatedly using 'paster harvest import'.
+        The stage can be run again on one harvest object with `ckan harvester import`.
 
         :param harvest_object: HarvestObject object
-        :returns: True if the action was done, "unchanged" if the object didn't
-                  need harvesting after all or False if there were errors.
+        :returns: True if the action was done, False if there were errors.
         """
 
         logger = logging.getLogger(__name__ + ".import_stage")
 
         logger.debug("Starting import stage for harvest_object [%s]", harvest_object.id)
-        # The harvester is a singleton: what belongs to this import is kept in a list that is passed on.
-        warnings = []
+        # One harvester instance serves all imports, so the warnings of this import are collected here.
+        import_warnings = []
 
         self.setup_record_to_package_converter(
             harvest_object.source.url,
@@ -321,9 +312,9 @@ class CivityHarvester(HarvesterBase):
             return False
 
         try:
-            # Determine datatype
             identifier_harvest_object = Identifier(harvest_object.guid)
             datatype = identifier_harvest_object.get_id_type()
+            # Label caches of this harvest job are scoped to it, see run_scope
             start_run(harvest_object.harvest_job_id)
 
             if datatype == "dataset":
@@ -362,8 +353,8 @@ class CivityHarvester(HarvesterBase):
         if not package_dict:
             return False
 
-        # TODO Doesn't this mean a new name will be generated for each update? This should be a new which never ever
-        #  changes as long as the record in the harvester source does not change
+        # TODO: a name is generated from the title only when the package is created. Decide whether an
+        # update should keep that name stable as well.
         logger.info(
             "Generating package name from title [{}]".format(package_dict["title"])
         )
@@ -416,7 +407,7 @@ class CivityHarvester(HarvesterBase):
         # Variable for the new or existing package ID
         package_id = None
 
-        # Separate Update of package and resources, for trigger reasons
+        # The package and its resources are saved in separate steps
         resources = package_dict.pop("resources")
 
         if status == "new":
@@ -426,7 +417,7 @@ class CivityHarvester(HarvesterBase):
                 package_dict[ID] = str(uuid.uuid4())
                 
             package_id = self._create_or_update_package(
-                package_dict, "create", context, harvest_object, warnings
+                package_dict, "create", context, harvest_object, import_warnings
             )
 
         elif status == "change":
@@ -435,19 +426,19 @@ class CivityHarvester(HarvesterBase):
 
             # Update existing package
             package_id = self._create_or_update_package(
-                package_dict, "update", context, harvest_object, warnings
+                package_dict, "update", context, harvest_object, import_warnings
             )
 
         # In case of success (package_id is defined in that case), create the resources
         if package_id:
             if not self._create_resources(
-                resources, package_id, package_dict["title"], context, harvest_object, warnings
+                resources, package_id, package_dict["title"], context, harvest_object, import_warnings
             ):
                 return False
         else:
             return False
 
-        # 🔧 Clear previous current HarvestObjects with the same GUID
+        # Clear previous current HarvestObjects with the same GUID
         model.Session.query(HarvestObject).filter(
             HarvestObject.guid == harvest_object.guid,
             HarvestObject.harvest_source_id == harvest_object.harvest_source_id,
@@ -455,13 +446,13 @@ class CivityHarvester(HarvesterBase):
             HarvestObject.id != harvest_object.id
         ).update({"current": False}, synchronize_session=False)
 
-        # ✅ Mark this object as current
+        # Mark this object as current
         harvest_object.current = True
         harvest_object.add()
 
         model.Session.commit()
 
-        for warning in warnings:
+        for warning in import_warnings:
             self._save_object_error(warning, harvest_object, "Import")
 
         logger.debug("Finished import stage for harvest_object [%s]", harvest_object.id)
@@ -568,17 +559,9 @@ class CivityHarvester(HarvesterBase):
         True if a `package_name_key` unique-constraint violation shows up
         anywhere in this exception's cause/context chain.
 
-        A chain walk is needed rather than a plain isinstance/errno check on
-        the top-level exception because the exact exception class that
-        surfaces a DB-level name collision can vary: a direct
-        `IntegrityError`, or something SQLAlchemy/CKAN wrapped around it
-        (e.g. a `PendingRollbackError` from another query hitting the same
-        already-aborted session), depending on what else touches the session
-        in between the conflicting insert and the exception actually
-        reaching us. Each node in the chain still has to actually be an
-        `IntegrityError` naming the `package_name_key` constraint, so an
-        unrelated failure that merely mentions that string isn't mistaken
-        for a name collision.
+        The collision can reach us wrapped in another exception, so every
+        exception in the cause/context chain is checked. A node only counts
+        when it is an `IntegrityError` for the `package_name_key` constraint.
         """
         seen = set()
         exc = error
@@ -710,50 +693,3 @@ class CivityHarvester(HarvesterBase):
             if extra.key == key:
                 return extra.value
         return None
-
-    def _get_template_package_dict(self, harvest_config_dict):
-        """
-        Get template package dictionary. This approach has the advantage that in case someone modifies the
-        schema, the harvester configuration can be left untouched without the harvester breaking. Disadvantage is
-        that there is a package which should never be shown to users.
-        TODO
-          is this the most convenient solution? Are there better alternatives which provide the same functionality
-          without the drawback of running the risk of the template showing up somewhere unexpectedly.
-        :param harvest_config_dict:
-        :return:
-        """
-        context = {
-            "user": self._get_user_name(),
-            "return_id_only": True,
-            "ignore_auth": True,
-        }
-
-        template_package_id = self._get_template_package_id(harvest_config_dict)
-        try:
-            result = toolkit.get_action("package_show")(
-                context.copy(), {"id": template_package_id}
-            )
-        except toolkit.ObjectNotFound as e:
-            log.error(
-                "Error looking up template package [%s]: [%s]",
-                template_package_id,
-                e.message,
-            )
-            result = None
-
-        return result
-
-    @staticmethod
-    def _get_template_package_id(harvest_config_dict):
-        """
-        Retrieves template package ID from harvest_config dictionary key 'template_package_id_id' if it exists
-        ex. {'template_package_id': 'template_for_rotterdam_dataplatform'}
-        """
-
-        if "template_package_id" in harvest_config_dict.keys():
-            result = harvest_config_dict.get("template_package_id", "template")
-        else:
-            result = "template"
-
-        return result
-

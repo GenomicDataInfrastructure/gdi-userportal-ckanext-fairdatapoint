@@ -20,6 +20,8 @@ log = logging.getLogger(__name__)
 # stored at harvest are the ones the catalogue sends out. Without that extension the field lists below are used.
 TERMS_ACTION = "gdi_terms_to_translate"
 
+# Dataset fields whose values can be term URIs to resolve. Used when the dataset schema cannot
+# say which terms it shows as labels (see TERMS_ACTION).
 PACKAGE_REPLACE_FIELDS = [
     "access_rights",
     "applicable_legislation",
@@ -135,8 +137,9 @@ def resolve_labels(package_dict: dict) -> int:
 
     Returns
     -------
-    int
-        Number of successfully resolved labels, -1 if none needed to be resolved
+    int | None
+        Number of translations stored, 0 if none were stored, -1 if no term was
+        missing a language. None if CKAN reports an error while storing them.
 
     """
     translation_list = []
@@ -160,12 +163,10 @@ def resolve_labels(package_dict: dict) -> int:
 
         _remember_unavailable_languages(missing_languages, translation_list)
 
-        # Check if there is actually translations in the list
         if translation_list:
-            # term_translation_update is a privileged function
-            # Thank god CKAN is like Hollywood OS and we can just override
             # Only store the languages a term is missing: a translation that is already
-            # known (and possibly curated) is left as it is.
+            # known (and possibly curated) is left as it is. ignore_auth is set because
+            # the harvest runs without a user context.
             filtered_translation_list = [
                 t
                 for t in translation_list
@@ -270,7 +271,7 @@ def _is_absolute_uri(uri: str) -> bool:
     Returns
     -------
     bool
-        True if resolvale URI, False if not
+        True if resolvable URI, False if not
     """
     try:
         # If URI cannot be parsed we can safely assume it's invalid

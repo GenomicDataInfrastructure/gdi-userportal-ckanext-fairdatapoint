@@ -19,6 +19,9 @@ from ckanext.fairdatapoint.harvesters.config import (
     get_harvester_int_setting,
     get_harvester_setting,
 )
+from ckanext.fairdatapoint.harvesters.domain.fair_data_point import (
+    REQUEST_TIMEOUT as FDP_REQUEST_TIMEOUT,
+)
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import (
     FairDataPointRecordProvider,
 )
@@ -32,18 +35,16 @@ from ckanext.fairdatapoint.run_scope import start_run
 PROFILE = "profile"
 HARVEST_CATALOG = "harvest_catalogs"
 REQUEST_TIMEOUT = "request_timeout"
-DEFAULT_REQUEST_TIMEOUT = 100
+DEFAULT_REQUEST_TIMEOUT = FDP_REQUEST_TIMEOUT
 # Registered by ckanext-gdi-userportal; called by name so that this extension needs no import of it.
 CONFORMANCE_ACTION = "gdi_metadata_profile_conformance"
-
-# HARVEST_CATALOG_CONFIG = "ckanext.fairdatapoint.harvest_catalogs"
 
 log = logging.getLogger(__name__)
 
 
 class FairDataPointCivityHarvester(CivityHarvester):
-    # The dcat_rdf harvester resolves the labels of a whole source in its gather stage and only
-    # tells plugins which harvest job that is through this interface.
+    # ckanext-dcat calls before_download on every IDCATRDFHarvester plugin when a job of its RDF
+    # harvester starts. That is how this extension learns the job, to scope its label caches to it.
     implements(IDCATRDFHarvester, inherit=True)
 
     def before_download(self, url, harvest_job):
@@ -51,7 +52,7 @@ class FairDataPointCivityHarvester(CivityHarvester):
         return url, []
 
     def setup_record_provider(self, harvest_url, harvest_config_dict):
-        # Harvest catalog config can be set on global CKAN level, but can be overriden by harvest config
+        # The catalog setting can be set on CKAN level and overridden in the harvest source config
         harvest_catalogs = get_harvester_setting(
             harvest_config_dict, HARVEST_CATALOG, False
         )

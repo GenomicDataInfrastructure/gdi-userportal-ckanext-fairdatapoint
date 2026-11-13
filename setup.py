@@ -25,7 +25,7 @@ setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     # The project's main homepage.
-    url="https://github.com/CivityNL/ckanext-fairdatapoint",
+    url="https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint",
     # Author details
     author="""Health-RI""",
     author_email="""servicedesk@health-ri.nl""",

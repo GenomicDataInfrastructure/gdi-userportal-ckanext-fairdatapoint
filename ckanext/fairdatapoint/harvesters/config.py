@@ -15,9 +15,9 @@ def get_harvester_setting(harvest_config_dict: dict, config_name: str, default_v
     harvest_config_dict : dict
         Harvester configuration dictionary, usually converted from a JSON
     config_name : str
-        Name of the configuraiton setting
+        Name of the configuration setting
     default_value
-        Default value of the setting, if not defined elsehwere
+        Default value of the setting, if not defined elsewhere
 
     Returns
     -------
