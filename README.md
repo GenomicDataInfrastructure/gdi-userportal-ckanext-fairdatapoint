@@ -11,7 +11,7 @@ SPDX-License-Identifier: CC-BY-4.0
 [![Release](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/release.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/release.yml)
 [![Main](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/main.yml/badge.svg)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/actions/workflows/main.yml)
 [![GitHub contributors](https://img.shields.io/github/contributors/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint)](https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint/graphs/contributors)
-[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](code_of_conduct.md)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 # ckanext-fairdatapoint
 
@@ -21,20 +21,20 @@ CKAN harvester for [FAIR Data Point](https://www.fairdatapoint.org/). Contains a
 
 The harvester runs in three stages. Each of these stages can be modified.
 
- 1. Gather stage. The gather stage uses the FairDataPointRecordProvider which implements the IRecordProvider interface to create a list of identifiers of the objects which should be included in the harvest. In case of a FAIR data point, this list includes catalogs and datasets. In the future, collections could be added;
- 2. Fetch stage. The fetch stage downloads the actual source data. In this phase, additional data from other sources may be included to better suit the DCAT profile as expected by CKAN;
- 3. Import stage. The import stage does the actual import. How the RDF from the FAIR data point is mapped to CKAN packages and resources is determined by so-called application profiles. In case of a FAIR data point which uses custom fields, a profile must be created. A profile can be defined as a Python class in the ckanext.fairdatapoint.profiles.py file. The new profile must be registered in the [ckan.rdf.profiles] section of setup.py. What profile is being used for a particular is determined by the harvester configuration.
+ 1. Gather stage. The gather stage uses the FairDataPointRecordProvider (`ckanext/fairdatapoint/harvesters/domain/fair_data_point_record_provider.py`) to create a list of identifiers of the objects which should be included in the harvest. In case of a FAIR data point, this list includes catalogs and datasets. In the future, collections could be added;
+ 2. Fetch stage. The fetch stage downloads the RDF of each record. The record provider then adds the information of the record's distributions and of its contact point to the graph, so the import sees one self-contained record;
+ 3. Import stage. The import stage does the actual import. How the RDF from the FAIR data point is mapped to CKAN packages and resources is determined by so-called application profiles. In case of a FAIR data point which uses custom fields, a profile must be created. A profile can be defined as a Python class in `ckanext/fairdatapoint/profiles.py`. The new profile must be registered in the `[ckan.rdf.profiles]` section of `setup.py`. Which profile is used for a particular source is determined by the harvester configuration.
 
 ### Selecting the metadata profile of a source
 
 A harvest source picks one of the metadata profiles the deployment enables (`GDI_METADATA_PROFILES`; see
 `docs/metadata-profiles.md` in `gdi-userportal-ckan-docker`) in its configuration:
 
-``
+```json
 {
  "metadata_profile": "healthdcat_r8"
 }
-``
+```
 
 - Absent, `null` or empty: the main profile of the deployment.
 - A profile that is not enabled is rejected when the source is saved (the message names the enabled
@@ -46,23 +46,26 @@ A harvest source picks one of the metadata profiles the deployment enables (`GDI
   object <id>) does not conform to metadata profile 'healthdcat_r8' at access layer NON_PUBLIC: keyword`). It is
   information only: it never blocks or fails an import. A source with a raw `profile` chain names no profile to check.
 
-The older `profile` key still works as an explicit override. It is a space-separated chain of RDF profile names (for
+The `profile` key still works as an explicit override. It is a space-separated chain of RDF profile names (for
 example `"fairdatapoint_dcat_ap euro_dcat_ap_nl"`), used exactly as written. Setting both `metadata_profile` and
 `profile` is rejected, and `profile` is checked against the installed RDF profiles when the source is saved.
 
-To run the harvester from the command line:
+To run a harvest source from the command line:
 
-``
-ckan --config=<full path to CKAN ini-file> harvester run-test <id of harvester>
-``
+```bash
+ckan --config=<full path to CKAN ini-file> harvester job <source id>
+```
 
-To rebuiod the index in case it is not automatically update after clearing all packages from a harvester:
+Use `harvester job` rather than `harvester run-test`: `run-test` runs the stages in the CLI process, next to the
+gather and fetch consumers that are already running, and the two race each other.
 
-``
+To rebuild the index in case it is not automatically updated after clearing all packages from a harvester:
+
+```bash
 ckan --config=<full path to CKAN ini-file> search-index rebuild
-``
+```
 
-For more information got to [GDI harvester information](https://genomicdatainfrastructure.github.io/gdi-userportal-docs/docs/ckan/harvester/)
+For more information go to [GDI harvester information](https://genomicdatainfrastructure.github.io/gdi-userportal-docs/docs/ckan/harvester/)
 
 ## Requirements
 
@@ -74,10 +77,6 @@ Compatibility with core CKAN versions:
 
 ## Installation
 
-**TODO:** Add any additional install steps to the list below.
-   For example installing any non-Python dependencies or adding any required
-   config settings.
-
 To install gdi-userportal-ckanext-fairdatapoint:
 
 1. Activate your CKAN virtual environment, for example:
@@ -86,14 +85,16 @@ To install gdi-userportal-ckanext-fairdatapoint:
 
 2. Clone the source and install it on the virtualenv
 
-    git clone <https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint.git>
+    git clone https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint.git
     cd gdi-userportal-ckanext-fairdatapoint
     pip install -e .
- pip install -r requirements.txt
+    pip install -r requirements.txt
 
-3. Add `fairdatapoint` to the `ckan.plugins` setting in your CKAN
-   config file (by default the config file is located at
-   `/etc/ckan/default/ckan.ini`).
+3. Add the plugins to the `ckan.plugins` setting in your CKAN config file (by default
+   `/etc/ckan/default/ckan.ini`):
+
+   - `fairdatapointharvester`: the FAIR data point harvester. Required to harvest.
+   - `fairdatapoint`: registers the extension's templates, public files and fanstatic resources with CKAN.
 
 4. Restart CKAN. For example if you've deployed CKAN with Apache on Ubuntu:
 
@@ -106,7 +107,7 @@ To install gdi-userportal-ckanext-fairdatapoint:
 There is a setting `ckanext.fairdatapoint.harvest_catalogs`. Default is `false`. If set to `true`,
 CKAN will harvest catalogs as datasets.
 
-The setting can be overriden in the harvester profile, by setting `"harvest_catalogs": "true"` or
+The setting can be overridden in the harvester profile, by setting `"harvest_catalogs": "true"` or
 `"harvest_catalogs": "false"` in the harvester configuration JSON.
 
 ### Request timeout
@@ -119,17 +120,23 @@ The setting can be overridden per harvester source by adding
 
 ### Label resolving
 
-The harvester supports the resolving of labels for fields defined as a (resolvable) URI. Examples of
-this include Wikidata entities. There is a setting `ckanext.fairdatapoint.resolve_labels`. Default
-is `true`, but you can disable it globally by explicitly setting it to `false`.
+Labels are always resolved: for each URI-valued term of a dataset that has no label yet in a language, the
+harvester loads the label from the URI's source and stores it as a CKAN translation. There is no switch to
+turn this off.
 
-The setting can be overriden in the harvester profile, by setting `"resolve_labels": "true"` or
-`"resolve_labels": "false"` in the harvester configuration JSON.
+The resolvers, chosen by the URI's host:
+
+- Wikidata entities (`wikidata.org` URIs), read from the Wikidata entity RDF.
+- BioOntology URIs (`bioontology.org`), read from the BioOntology API. The API needs the BioPortal key set
+  with `ckanext.fairdatapoint.bioportal_api_key`; without it these URIs are not loaded.
+- ICD-10 URIs (`http://icd.who.int/browse10/...`), read from the public WHO ICD-10 browser.
+- DPV doc pages (`w3c.github.io` and `w3c-cg.github.io` URIs), rewritten to their `w3id.org` identifier first.
+- Any other `http(s)` URI, loaded by content negotiation.
 
 Which values of a dataset are looked up is decided by the dataset schema, through the action
 `gdi_terms_to_translate` of ckanext-gdi-userportal: the values of the fields that the catalogue shows as a
 label, so every label it sends out is stored. A deployment without that extension uses the field lists in
-`labels.py`.
+`ckanext/fairdatapoint/labels.py`.
 
 The labels are stored in English, Dutch and every other language the dataset schema offers in its form
 (`form_languages`); no setting of this extension is needed for that.
@@ -141,7 +148,7 @@ do:
 
     git clone https://github.com/GenomicDataInfrastructure/gdi-userportal-ckanext-fairdatapoint.git
     cd gdi-userportal-ckanext-fairdatapoint
-    python setup.py develop
+    pip install -e .
     pip install -r dev-requirements.txt
 
 Fairdatapoint plugin depends on `ckanext-scheming`, `ckanext-harvester` and `ckanext-dcat`. Make sure these are installed,
@@ -158,41 +165,28 @@ pip install -r https://raw.githubusercontent.com/ckan/ckanext-dcat/v2.2.0/requir
 
 To run the tests go to [GDI harvester test information](https://genomicdatainfrastructure.github.io/gdi-userportal-docs/developer-guide/ckan/extension-local-setup-and-testing/)
 
+The tests need a CKAN database configured in `test.ini`. From the repository root, with the development
+requirements installed:
+
+```bash
+pytest --ckan-ini=test.ini ckanext/fairdatapoint
+```
+
+CI runs the same command (`.github/workflows/test.yml`).
+
 ## Releasing a new version of ckanext-fairdatapoint
 
-If ckanext-fairdatapoint should be available on PyPI you can follow these steps to publish a new version:
+Releases are made by the `Release` workflow (`.github/workflows/release.yml`), which is started by hand from
+the Actions tab with a version increment (`major`, `minor` or `patch`):
 
-1. Update the version number in the `setup.py` file. See [PEP 440](http://legacy.python.org/dev/peps/pep-0440/#public-version-identifiers) for how to choose version numbers.
+1. It takes the latest tag (`vMAJOR.MINOR.PATCH`), increments the chosen part and pushes the new tag.
+2. It creates a GitHub release for the new tag with generated release notes.
 
-2. Make sure you have the latest version of necessary packages:
-
-    pip install --upgrade setuptools wheel twine
-
-3. Create a source and binary distributions of the new version:
-
-       python setup.py sdist bdist_wheel && twine check dist/*
-
-   Fix any errors you get.
-
-4. Upload the source distribution to PyPI:
-
-       twine upload dist/*
-
-5. Commit any outstanding changes:
-
-       git commit -a
-       git push
-
-6. Tag the new release of the project on GitHub with the version number from
-   the `setup.py` file. For example if the version number in `setup.py` is
-   0.0.1 then do:
-
-       git tag 0.0.1
-       git push --tags
+The version in `setup.py` is not changed by the workflow.
 
 ## License
 
-This work is licensed under multiple licenses. Because keeping this section up-to-date is challenging, here is a brief summary as of January 2024:
+This work is licensed under multiple licenses. Because keeping this section up-to-date is challenging, here is a brief summary:
 
 - All original source code is licensed under [AGPL](./LICENSES/AGPL-3.0-only.txt).
 - All documentation is licensed under [CC-BY-4.0](./LICENSES/CC-BY-4.0.txt).
