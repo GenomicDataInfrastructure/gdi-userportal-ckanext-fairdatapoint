@@ -24,10 +24,8 @@ class FairDataPoint:
 
     def get_graph(self, path: Union[str, URIRef]) -> Graph:
         """
-        Get graph from FDP at specified path. Not using function to load graph from endpoint directly since this
-        function fails because of a certificate error. The library it uses probably has no certificates which would
-        have to be added to a trust store. But this is inconvenient in case of a new harvester which refers to an
-        endpoint whose certificate is not in the trust store yet.
+        Get the graph at `path` from the FDP. Fetches with requests rather than rdflib's URL loader,
+        which fails on endpoints whose certificate is not in the bundled trust store.
         """
         graph = Graph()
         data = self._get_data(path)

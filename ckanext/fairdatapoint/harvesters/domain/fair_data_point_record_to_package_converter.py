@@ -39,7 +39,7 @@ class FairDataPointRecordToPackageConverter:
 
             if not items:
                 log.warning("No %s found in RDF", datatype)
-                return None  # Returning None instead of False for clarity
+                return None
 
             return items[0]  # Assuming single item per record
         except RDFParserException as e:

@@ -69,7 +69,8 @@ class FairDataPointRecordProvider:
 
     def get_record_by_id(self, guid: str) -> str:
         """
-        Get additional information for FDP record.
+        Return the record at `guid` as Turtle, with the information of its distributions and
+        contact point merged into it.
         """
         log.debug(
             "FAIR data point get_record_by_id from {} for {}".format(
@@ -122,7 +123,8 @@ class FairDataPointRecordProvider:
         self, g: Graph, subject_uri: URIRef, contact_point_uri: URIRef
     ):
         """
-        Replaces contact point URI with a VCard
+        Replace an ORCID contact point with a VCard that holds the name from the ORCID record.
+        Other contact points are left as they are.
         """
 
         if "orcid" in str(contact_point_uri):
