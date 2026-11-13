@@ -37,7 +37,7 @@ class FairDataPointRecordToPackageConverter:
             else:
                 items = list(parser.datasets(series_mapping=series_mapping))
 
-            if not items or len(items) < 1:
+            if not items:
                 log.warning("No %s found in RDF", datatype)
                 return None  # Returning None instead of False for clarity
 
