@@ -80,7 +80,8 @@ setup(
         
         [ckan.rdf.profiles]
         fairdatapoint_dcat_ap=ckanext.fairdatapoint.profiles:FAIRDataPointDCATAPProfile
-        
+        fairdatapoint_additive=ckanext.fairdatapoint.profiles:FAIRDataPointAdditiveProfile
+
         [babel.extractors]
         ckan = ckan.lib.extract:extract_ckan
     """,

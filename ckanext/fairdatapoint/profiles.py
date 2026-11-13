@@ -9,7 +9,7 @@ from typing import Dict, List
 
 from rdflib import Namespace, URIRef
 
-from ckanext.dcat.profiles import EuropeanHealthDCATAPProfile
+from ckanext.dcat.profiles import EuropeanHealthDCATAPProfile, RDFProfile
 from ckanext.fairdatapoint.labels import PACKAGE_REPLACE_FIELDS, resolve_labels
 
 log = logging.getLogger(__name__)
@@ -49,57 +49,83 @@ def validate_tags(values_list: List[Dict]) -> List:
     return tags
 
 
+def sanitize_tags_translated(tags_translated: Dict[str, List[str]]) -> Dict[str, List[str]]:
+    """Remove invalid multilingual tags to satisfy CKAN length rules."""
+
+    sanitized: Dict[str, List[str]] = {}
+
+    for lang, values in tags_translated.items():
+        tag_dicts = [{"name": value} for value in values if value]
+        cleaned = validate_tags(tag_dicts)
+        sanitized[lang] = [tag["name"] for tag in cleaned]
+
+        if len(values) != len(sanitized[lang]):
+            removed_tags = [v for v in values if v not in sanitized[lang]]
+            log.warning(
+                "Removed invalid tags for language %s during multilingual sanitation. Original: %r, Removed: %r",
+                lang,
+                values,
+                removed_tags,
+            )
+
+    return sanitized
+
+
+def postprocess_dataset(dataset_dict: Dict, default_lang: str) -> Dict:
+    """
+    What a FAIR data point record needs on top of the plain RDF mapping: tags that satisfy
+    CKAN's rules and labels resolved for the terms the record only references.
+
+    Shared by FAIRDataPointDCATAPProfile, which gets it through the health profile it
+    extends, and FAIRDataPointAdditiveProfile, which gets it after any other profile.
+    """
+    tags_translated = dataset_dict.get("tags_translated")
+    if isinstance(tags_translated, dict):
+        dataset_dict["tags_translated"] = sanitize_tags_translated(tags_translated)
+
+        default_lang_tags = dataset_dict["tags_translated"].get(default_lang) or next(
+            (values for values in dataset_dict["tags_translated"].values() if values),
+            [],
+        )
+        dataset_dict["tags"] = [{"name": tag} for tag in default_lang_tags]
+
+    dataset_dict["tags"] = validate_tags(dataset_dict.get("tags", []))
+
+    resolve_labels(dataset_dict)
+
+    return dataset_dict
+
+
 class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
     """
-    An RDF profile for FAIR data points
+    An RDF profile for FAIR data points.
+
+    It extends the health profile of the gdi_current metadata model, so the FAIR data point
+    behaviour here is tied to that model.
+    A source that selects another metadata profile gets FAIRDataPointAdditiveProfile
+    after that profile's own chain instead.
     """
 
     def parse_dataset(self, dataset_dict: Dict, dataset_ref: URIRef) -> Dict:
         super(FAIRDataPointDCATAPProfile, self).parse_dataset(dataset_dict, dataset_ref)
 
-        tags_translated = dataset_dict.get("tags_translated")
-        if isinstance(tags_translated, dict):
-            dataset_dict["tags_translated"] = self._sanitize_tags_translated(
-                tags_translated
-            )
-
-            default_lang_tags = dataset_dict["tags_translated"].get(
-                self._default_lang
-            ) or next(
-                (
-                    values
-                    for values in dataset_dict["tags_translated"].values()
-                    if values
-                ),
-                [],
-            )
-            dataset_dict["tags"] = [{"name": tag} for tag in default_lang_tags]
-
-        dataset_dict["tags"] = validate_tags(dataset_dict.get("tags", []))
-
-        resolve_labels(dataset_dict)
-
-        return dataset_dict
+        return postprocess_dataset(dataset_dict, self._default_lang)
 
     def _sanitize_tags_translated(
         self, tags_translated: Dict[str, List[str]]
     ) -> Dict[str, List[str]]:
-        """Remove invalid multilingual tags to satisfy CKAN length rules."""
+        return sanitize_tags_translated(tags_translated)
 
-        sanitized: Dict[str, List[str]] = {}
 
-        for lang, values in tags_translated.items():
-            tag_dicts = [{"name": value} for value in values if value]
-            cleaned = validate_tags(tag_dicts)
-            sanitized[lang] = [tag["name"] for tag in cleaned]
+class FAIRDataPointAdditiveProfile(RDFProfile):
+    """
+    The FAIR data point behaviour without a health profile of its own.
 
-            if len(values) != len(sanitized[lang]):
-                removed_tags = [v for v in values if v not in sanitized[lang]]
-                log.warning(
-                    "Removed invalid tags for language %s during multilingual sanitation. Original: %r, Removed: %r",
-                    lang,
-                    values,
-                    removed_tags,
-                )
+    Purely additive, like EuropeanDCATAPNLProfile: it parses nothing from the RDF and does
+    not extend another profile, so it never re-derives what an earlier profile in the
+    chain computed. Put it last in the chain, after the health profile of the metadata
+    profile a FAIR data point source selects.
+    """
 
-        return sanitized
+    def parse_dataset(self, dataset_dict: Dict, dataset_ref: URIRef) -> Dict:
+        return postprocess_dataset(dataset_dict, self._default_lang)
