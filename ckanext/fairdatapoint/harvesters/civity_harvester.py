@@ -29,8 +29,6 @@ log = logging.getLogger(__name__)
 
 _PACKAGE_NAME_KEY_VIOLATION_RE = re.compile(r'unique constraint "package_name_key"')
 
-RESOLVE_LABELS = "resolve_labels"
-
 # A new package's name is picked via a check-then-insert (see
 # HarvesterBase._gen_new_name): another harvest process can commit a package
 # under that same name in the gap between the check and our own insert. This
