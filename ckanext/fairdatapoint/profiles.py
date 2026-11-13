@@ -23,7 +23,7 @@ def validate_tags(values_list: List[Dict]) -> List:
     """
     Validates tags strings to contain allowed characters, replaces others with spaces
     """
-    illegal_pattern = re.compile("[^A-Za-z0-9\- _\.]")
+    illegal_pattern = re.compile(r"[^A-Za-z0-9\- _\.]")
     tags = []
     for item in values_list:
         tag_value = item["name"]
