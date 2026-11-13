@@ -14,7 +14,10 @@ from rdflib import DCAT, DCTERMS, RDF, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.term import Node
 from requests import HTTPError, JSONDecodeError
 
-from ckanext.fairdatapoint.harvesters.domain.fair_data_point import FairDataPoint
+from ckanext.fairdatapoint.harvesters.domain.fair_data_point import (
+    REQUEST_TIMEOUT,
+    FairDataPoint,
+)
 from ckanext.fairdatapoint.harvesters.domain.graph_to_fdp_record_mapper import (
     GraphToFdpRecordMapper,
 )
@@ -22,7 +25,6 @@ from ckanext.fairdatapoint.harvesters.domain.identifier import Identifier
 
 LDP = Namespace("http://www.w3.org/ns/ldp#")
 VCARD = Namespace("http://www.w3.org/2006/vcard/ns#")
-REQUEST_TIMEOUT = 100 # seconds
 
 log = logging.getLogger(__name__)
 

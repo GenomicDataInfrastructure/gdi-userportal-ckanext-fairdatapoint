@@ -19,6 +19,9 @@ from ckanext.fairdatapoint.harvesters.config import (
     get_harvester_int_setting,
     get_harvester_setting,
 )
+from ckanext.fairdatapoint.harvesters.domain.fair_data_point import (
+    REQUEST_TIMEOUT as FDP_REQUEST_TIMEOUT,
+)
 from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_provider import (
     FairDataPointRecordProvider,
 )
@@ -32,7 +35,7 @@ from ckanext.fairdatapoint.run_scope import start_run
 PROFILE = "profile"
 HARVEST_CATALOG = "harvest_catalogs"
 REQUEST_TIMEOUT = "request_timeout"
-DEFAULT_REQUEST_TIMEOUT = 100
+DEFAULT_REQUEST_TIMEOUT = FDP_REQUEST_TIMEOUT
 # Registered by ckanext-gdi-userportal; called by name so that this extension needs no import of it.
 CONFORMANCE_ACTION = "gdi_metadata_profile_conformance"
 
