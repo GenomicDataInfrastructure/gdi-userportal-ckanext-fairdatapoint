@@ -6,7 +6,7 @@
 
 import logging
 import re
-from typing import Dict, Iterable, Union
+from typing import Iterable, KeysView, Union
 from collections import deque
 
 import requests
@@ -41,14 +41,14 @@ class FairDataPointRecordProvider:
         self.harvest_catalogs = harvest_catalogs
         self.request_timeout = request_timeout
 
-    def get_record_ids(self) -> Dict.keys:
+    def get_record_ids(self) -> KeysView[str]:
         log.debug(
             "FAIR Data Point get_records from {}".format(
                 self.fair_data_point.fdp_end_point
             )
         )
         result = dict()
-        for fdp_record in self._breath_first_search_records(
+        for fdp_record in self._breadth_first_search_records(
             self.fair_data_point.fdp_end_point
         ):
             if self.harvest_catalogs and fdp_record.is_catalog():
@@ -157,7 +157,7 @@ class FairDataPointRecordProvider:
         graph = self.fair_data_point.get_graph(url)
         return mapper.map(graph)
 
-    def _breath_first_search_records(self, start_url: str):
+    def _breadth_first_search_records(self, start_url: str):
         queue = deque([start_url])
         visited = set()
         while queue:
