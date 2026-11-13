@@ -282,7 +282,7 @@ class CivityHarvester(HarvesterBase):
 
         logger.debug("Starting import stage for harvest_object [%s]", harvest_object.id)
         # The harvester is a singleton: what belongs to this import is kept in a list that is passed on.
-        warnings = []
+        import_warnings = []
 
         self.setup_record_to_package_converter(
             harvest_object.source.url,
@@ -424,7 +424,7 @@ class CivityHarvester(HarvesterBase):
                 package_dict[ID] = str(uuid.uuid4())
                 
             package_id = self._create_or_update_package(
-                package_dict, "create", context, harvest_object, warnings
+                package_dict, "create", context, harvest_object, import_warnings
             )
 
         elif status == "change":
@@ -433,13 +433,13 @@ class CivityHarvester(HarvesterBase):
 
             # Update existing package
             package_id = self._create_or_update_package(
-                package_dict, "update", context, harvest_object, warnings
+                package_dict, "update", context, harvest_object, import_warnings
             )
 
         # In case of success (package_id is defined in that case), create the resources
         if package_id:
             if not self._create_resources(
-                resources, package_id, package_dict["title"], context, harvest_object, warnings
+                resources, package_id, package_dict["title"], context, harvest_object, import_warnings
             ):
                 return False
         else:
@@ -459,7 +459,7 @@ class CivityHarvester(HarvesterBase):
 
         model.Session.commit()
 
-        for warning in warnings:
+        for warning in import_warnings:
             self._save_object_error(warning, harvest_object, "Import")
 
         logger.debug("Finished import stage for harvest_object [%s]", harvest_object.id)
