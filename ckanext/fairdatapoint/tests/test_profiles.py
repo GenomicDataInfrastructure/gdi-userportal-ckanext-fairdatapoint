@@ -13,6 +13,7 @@ from ckanext.fairdatapoint.harvesters.domain.fair_data_point_record_to_package_c
 )
 from ckanext.fairdatapoint.profiles import (
     FAIRDataPointDCATAPProfile,
+    sanitize_tags_translated,
     validate_tags,
 )
 
@@ -252,81 +253,69 @@ class TestParseDatasetTagsTranslated:
 
 
 class TestSanitizeTagsTranslated:
-    """Test _sanitize_tags_translated method"""
+    """Test sanitize_tags_translated"""
 
     def test_sanitize_tags_translated_valid_tags(self):
-        """Test _sanitize_tags_translated with valid tags"""
-        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-
+        """Test sanitize_tags_translated with valid tags"""
         tags_translated = {
             "en": ["tag1", "tag2", "valid-tag"],
             "nl": ["tag1_nl", "tag2_nl"],
         }
 
-        result = profile._sanitize_tags_translated(tags_translated)
+        result = sanitize_tags_translated(tags_translated)
 
         assert result["en"] == ["tag1", "tag2", "valid-tag"]
         assert result["nl"] == ["tag1_nl", "tag2_nl"]
 
     def test_sanitize_tags_translated_invalid_characters(self):
-        """Test _sanitize_tags_translated with invalid characters"""
-        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-
+        """Test sanitize_tags_translated with invalid characters"""
         tags_translated = {
             "en": ["tag1/with", "tag2@invalid", "valid-tag"],
             "nl": ["tag1#nl"],
         }
 
-        result = profile._sanitize_tags_translated(tags_translated)
+        result = sanitize_tags_translated(tags_translated)
 
         # Invalid characters should be replaced with spaces
         assert result["en"] == ["tag1 with", "tag2 invalid", "valid-tag"]
         assert result["nl"] == ["tag1 nl"]
 
     def test_sanitize_tags_translated_too_short(self):
-        """Test _sanitize_tags_translated with tags that are too short"""
-        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-
+        """Test sanitize_tags_translated with tags that are too short"""
         tags_translated = {"en": ["a", "tag", "valid-tag"]}
 
-        result = profile._sanitize_tags_translated(tags_translated)
+        result = sanitize_tags_translated(tags_translated)
 
         # Tags shorter than 2 characters should be removed
         assert result["en"] == ["tag", "valid-tag"]
 
     def test_sanitize_tags_translated_too_long(self):
-        """Test _sanitize_tags_translated with tags that are too long"""
-        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-
+        """Test sanitize_tags_translated with tags that are too long"""
         long_tag = "a" * 101  # 101 characters
         tags_translated = {"en": [long_tag, "valid-tag"]}
 
-        result = profile._sanitize_tags_translated(tags_translated)
+        result = sanitize_tags_translated(tags_translated)
 
         # Tags longer than 100 characters should be removed
         assert result["en"] == ["valid-tag"]
 
     def test_sanitize_tags_translated_empty_values(self):
-        """Test _sanitize_tags_translated with empty values"""
-        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-
+        """Test sanitize_tags_translated with empty values"""
         tags_translated = {"en": ["tag1", "", "tag2", None], "nl": []}
 
-        result = profile._sanitize_tags_translated(tags_translated)
+        result = sanitize_tags_translated(tags_translated)
 
         # Empty values should be filtered out
         assert result["en"] == ["tag1", "tag2"]
         assert result["nl"] == []
 
     def test_sanitize_tags_translated_mixed_valid_invalid(self):
-        """Test _sanitize_tags_translated with mix of valid and invalid tags"""
-        profile = FAIRDataPointDCATAPProfile(graph=Graph(), compatibility_mode=False)
-
+        """Test sanitize_tags_translated with mix of valid and invalid tags"""
         tags_translated = {
             "en": ["valid-tag", "a", "tag/with", "x" * 101, "another-valid"]
         }
 
-        result = profile._sanitize_tags_translated(tags_translated)
+        result = sanitize_tags_translated(tags_translated)
 
         # Should keep only valid tags
         assert result["en"] == ["valid-tag", "tag with", "another-valid"]

@@ -111,11 +111,6 @@ class FAIRDataPointDCATAPProfile(EuropeanHealthDCATAPProfile):
 
         return postprocess_dataset(dataset_dict, self._default_lang)
 
-    def _sanitize_tags_translated(
-        self, tags_translated: Dict[str, List[str]]
-    ) -> Dict[str, List[str]]:
-        return sanitize_tags_translated(tags_translated)
-
 
 class FAIRDataPointAdditiveProfile(RDFProfile):
     """

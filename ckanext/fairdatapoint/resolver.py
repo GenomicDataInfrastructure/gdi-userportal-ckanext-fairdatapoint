@@ -13,6 +13,7 @@ import requests
 from rdflib import RDFS, SDO, SKOS, Graph, Literal, URIRef
 from urllib.parse import urljoin, urlparse
 from ckanext.fairdatapoint.harvesters.config import get_bioportal_api_key
+from ckanext.fairdatapoint.languages import resolve_languages
 from ckanext.fairdatapoint.run_scope import run_store
 
 log = logging.getLogger(__name__)
@@ -20,7 +21,6 @@ log = logging.getLogger(__name__)
 
 # Default language for a label if it is not defined (Literal without language tag)
 DEFAULT_LABEL_LANG = "en"
-LANG_LIST = ["en", "nl"]
 # URIs that could not be loaded and are not tried again. Per harvest job (see `run_scope`), so
 # it is dropped with the job; only when no harvest job is known this set, which lives as long
 # as the process, is used.
@@ -278,8 +278,8 @@ class resolvable_label_resolver:
         }
         ```
 
-        Literals without a language tag are normalized to `DEFAULT_LABEL_LANG`. Only languages
-        present in `LANG_LIST` will be included; others are skipped. If there are multiple
+        Literals without a language tag are normalized to `DEFAULT_LABEL_LANG`. Only the languages
+        of the catalogue (`resolve_languages`) will be included; others are skipped. If there are multiple
         labels for the same language the last one seen will overwrite the previous.
 
         Parameters
@@ -293,6 +293,7 @@ class resolvable_label_resolver:
             Dictionary containing labels with language as key, localized label as value
         """
         lang_dict = dict()
+        languages = resolve_languages()
         subject = URIRef(_canonicalize_uri(str(subject)))
 
         # I am aware the dictionary gets overwritten. I am assuming SKOS.prefLabel is the most
@@ -307,7 +308,7 @@ class resolvable_label_resolver:
                     # Normalize missing language to DEFAULT_LABEL_LANG
                     lang = x.language or DEFAULT_LABEL_LANG
                     # Only keep languages we explicitly support
-                    if lang in LANG_LIST:
+                    if lang in languages:
                         lang_dict[lang] = x.value
 
         return lang_dict
@@ -612,9 +613,10 @@ class resolvable_label_resolver:
         term_translation (string) - the translation of the term, e.g. 'Liebesroman'
         lang_code (string) - the language code of the translation, e.g. 'de'
         """
+        languages = resolve_languages()
         for language, label in translation_dict.items():
             # only append allowed languages
-            if language and language in LANG_LIST:
+            if language and language in languages:
                 ckan_translation_list.append(
                     {
                         "term": str(subject_uri),

@@ -21,6 +21,15 @@ from ckanext.fairdatapoint.labels import (
 TEST_DATA_DIRECTORY = Path(Path(__file__).parent.resolve(), "test_data")
 
 
+@pytest.fixture
+def field_lists():
+    """The terms of a dataset from the field lists of this extension: the tests that use it are about what is
+    done with the terms, and count the calls of the mocked actions (the schema is asked through one too)."""
+    with patch("ckanext.fairdatapoint.labels._terms_from_schema", return_value=None):
+        yield
+
+
+
 @pytest.mark.parametrize(
     ["uri", "resolvable"],
     [
@@ -87,8 +96,19 @@ class TestTermUpdates:
             [self.URI_EN_ONLY, self.URI_UNKNOWN, self.URI_COMPLETE]
         )
 
-        get_action.return_value.assert_called_once()
+        get_action.assert_any_call("term_translation_show")
         assert sorted(out_list) == sorted([self.URI_EN_ONLY, self.URI_UNKNOWN])
+
+    @patch("ckanext.fairdatapoint.labels.resolve_languages", return_value=("en", "nl", "de"))
+    @patch("ckan.plugins.toolkit.get_action")
+    def test_a_form_language_of_the_schema_is_resolved_too(self, get_action, _languages):
+        get_action.return_value.return_value = self.KNOWN_DATA
+
+        missing = get_missing_languages([self.URI_COMPLETE])
+
+        assert missing == {self.URI_COMPLETE: {"de"}}
+        asked = get_action.return_value.call_args.args[1]
+        assert sorted(asked["lang_codes"]) == ["de", "en", "nl"]
 
     @patch("ckan.plugins.toolkit.get_action")
     def test_missing_languages_are_reported_per_term(self, get_action):
@@ -107,6 +127,7 @@ class TestTermUpdates:
         assert get_missing_languages([self.URI_EN_ONLY], languages=["en"]) == {}
 
 
+@pytest.mark.usefixtures("field_lists")
 @patch("ckanext.fairdatapoint.labels.get_missing_languages")
 @patch(
     "ckanext.fairdatapoint.resolver.resolvable_label_resolver.load_and_translate_uri"
@@ -472,6 +493,7 @@ class TestTermsInPackageDictWithResources:
         assert set(result) == expected_uris
 
 
+@pytest.mark.usefixtures("field_lists")
 class TestResolveLabelsEdgeCases:
     """Test resolve_labels edge cases"""
 
@@ -490,17 +512,17 @@ class TestResolveLabelsEdgeCases:
         get_missing_languages.return_value = {
             "http://www.wikidata.org/entity/Q29937289": {"en", "nl"}
         }
-        # Translation list with only unsupported language codes (not in RESOLVE_LANGUAGES)
+        # Translation list with only unsupported language codes (not in the languages of the catalogue)
         translation_list = [
             {
                 "term": "http://www.wikidata.org/entity/Q29937289",
                 "term_translation": "Datenkatalog",
-                "lang_code": "de",  # Not in RESOLVE_LANGUAGES ("en", "nl")
+                "lang_code": "de",  # Not one of the languages of the catalogue ("en", "nl")
             },
             {
                 "term": "http://www.wikidata.org/entity/Q29937289",
                 "term_translation": "カタログ",
-                "lang_code": "ja",  # Not in RESOLVE_LANGUAGES
+                "lang_code": "ja",  # Not one of the languages of the catalogue
             },
         ]
 
@@ -514,6 +536,7 @@ class TestResolveLabelsEdgeCases:
         get_action.return_value.assert_not_called()
 
 
+@pytest.mark.usefixtures("field_lists")
 class TestResolveLabelsMissingLanguages:
     """A term that is known in one language still gets its other languages resolved,
     without touching the translations that are already there."""
@@ -566,6 +589,7 @@ class TestResolveLabelsMissingLanguages:
         assert resolve_labels({"creator": [{"country": [self.TERM]}]}) == -1
 
 
+@pytest.mark.usefixtures("field_lists")
 class TestUnavailableLanguagesCache:
     """A language the source does not have is only asked for once per harvest run."""
 
@@ -668,3 +692,62 @@ def test_the_dcat_harvester_hands_over_its_harvest_job():
     assert (url, errors) == ("http://example.com", [])
     assert run_scope.current_run() == "job-42"
     run_scope._current_run.set(None)
+
+
+class TestTermsFromTheDatasetSchema:
+    """The terms to resolve are the ones the dataset schema marks (ckanext-gdi-userportal answers that), and the
+    field lists of this extension are what a deployment without it uses."""
+
+    PACKAGE = {"theme": ["http://example.com/theme"], "colour": "http://example.com/colour"}
+
+    @staticmethod
+    def _action(answer):
+        return patch("ckanext.fairdatapoint.labels.toolkit.get_action", return_value=lambda context, data: answer)
+
+    def test_the_terms_are_the_ones_the_schema_answers_that_can_be_resolved(self):
+        answer = {"terms": ["http://example.com/colour", "not-a-uri", "http://example.com/theme", 5]}
+
+        with self._action(answer):
+            terms = terms_in_package_dict(dict(self.PACKAGE))
+
+        assert terms == ["http://example.com/colour", "http://example.com/theme"]
+
+    def test_the_action_is_asked_for_the_dataset_without_authorisation_checks(self):
+        asked = []
+
+        def action(context, data):
+            asked.append((context, data))
+            return {"terms": []}
+
+        with patch("ckanext.fairdatapoint.labels.toolkit.get_action", return_value=action) as get_action:
+            assert terms_in_package_dict(self.PACKAGE) == []
+
+        get_action.assert_called_once_with("gdi_terms_to_translate")
+        assert asked == [({"ignore_auth": True}, {"package": self.PACKAGE})]
+
+    def test_a_schema_with_no_terms_is_an_answer_too(self):
+        with self._action({"terms": []}):
+            assert terms_in_package_dict(dict(self.PACKAGE)) == []
+
+    @pytest.mark.parametrize("failure", [KeyError("gdi_terms_to_translate"), RuntimeError("no app")])
+    def test_a_deployment_without_the_action_uses_the_field_lists(self, failure):
+        with patch("ckanext.fairdatapoint.labels.toolkit.get_action", side_effect=failure):
+            terms = terms_in_package_dict(dict(self.PACKAGE))
+
+        assert terms == ["http://example.com/theme"]  # theme is in the lists, colour is not
+
+    @pytest.mark.parametrize("answer", [None, "text", [], {}, {"terms": "text"}, {"terms": None}])
+    def test_an_answer_that_is_not_a_list_of_terms_uses_the_field_lists(self, answer):
+        with self._action(answer):
+            terms = terms_in_package_dict(dict(self.PACKAGE))
+
+        assert terms == ["http://example.com/theme"]
+
+    def test_an_action_that_fails_uses_the_field_lists(self):
+        def failing(context, data):
+            raise ValueError("boom")
+
+        with patch("ckanext.fairdatapoint.labels.toolkit.get_action", return_value=failing):
+            terms = terms_in_package_dict(dict(self.PACKAGE))
+
+        assert terms == ["http://example.com/theme"]

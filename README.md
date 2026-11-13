@@ -126,6 +126,14 @@ is `true`, but you can disable it globally by explicitly setting it to `false`.
 The setting can be overriden in the harvester profile, by setting `"resolve_labels": "true"` or
 `"resolve_labels": "false"` in the harvester configuration JSON.
 
+Which values of a dataset are looked up is decided by the dataset schema, through the action
+`gdi_terms_to_translate` of ckanext-gdi-userportal: the values of the fields that the catalogue shows as a
+label, so every label it sends out is stored. A deployment without that extension uses the field lists in
+`labels.py`.
+
+The labels are stored in English, Dutch and every other language the dataset schema offers in its form
+(`form_languages`); no setting of this extension is needed for that.
+
 ## Developer installation
 
 To install ckanext-fairdatapoint for development, activate your CKAN virtualenv and

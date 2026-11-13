@@ -9,10 +9,16 @@ from urllib.parse import urlparse
 from ckan.plugins import toolkit
 from rdflib import URIRef
 
+from ckanext.fairdatapoint.languages import resolve_languages
 from ckanext.fairdatapoint.resolver import resolvable_label_resolver
 from ckanext.fairdatapoint.run_scope import forget_finished_runs, run_store
 
 log = logging.getLogger(__name__)
+
+# Registered by ckanext-gdi-userportal; called by name so that this extension needs no import of it.
+# It lists the terms of a dataset as the dataset schema marks them (the fields shown as a label), so the labels
+# stored at harvest are the ones the catalogue sends out. Without that extension the field lists below are used.
+TERMS_ACTION = "gdi_terms_to_translate"
 
 PACKAGE_REPLACE_FIELDS = [
     "access_rights",
@@ -107,10 +113,6 @@ def _remember_unavailable_languages(
             unavailable.setdefault(term, set()).update(not_returned)
 
 
-# Languages to resolve labels in
-# TODO language codes should be dynamic
-RESOLVE_LANGUAGES = ("en", "nl")
-
 NESTED_FIELD_TRANSLATIONS = {
     "qualified_relation": {"role"},
     "qualified_attribution": {"role", "agent"},
@@ -190,7 +192,7 @@ def resolve_labels(package_dict: dict) -> int:
 
 
 def get_missing_languages(
-        terms: list[str], languages: list[str] = RESOLVE_LANGUAGES
+        terms: list[str], languages: list[str] | None = None
 ) -> dict[str, set[str]]:
     """Gets, per term, the languages CKAN has no translation for yet
 
@@ -202,7 +204,8 @@ def get_missing_languages(
     terms : list[str]
         List of labels that harvested, that need to be checked if they are resolved
     languages : list[str], optional
-        List of language codes that need to be resolved, default is 'en' and 'nl'.
+        List of language codes that need to be resolved, default is the languages of the catalogue
+        (`resolve_languages`: 'en', 'nl' and the form languages of the dataset schema).
 
     Returns
     -------
@@ -210,6 +213,7 @@ def get_missing_languages(
         Terms that are missing a translation, with the language codes they are missing.
         Terms that are known in every language are not included.
     """
+    languages = list(languages) if languages is not None else list(resolve_languages())
     term_set = set(terms)
 
     translation_table = toolkit.get_action("term_translation_show")(
@@ -229,7 +233,7 @@ def get_missing_languages(
 
 
 def get_list_unresolved_terms(
-        terms: list[str], languages: list[str] = RESOLVE_LANGUAGES
+        terms: list[str], languages: list[str] | None = None
 ) -> list[str]:
     """This function gets a list of terms not fully known by CKAN, based on an input list
 
@@ -240,7 +244,7 @@ def get_list_unresolved_terms(
     terms : list[str]
         List of labels that harvested, that need to be checked if they are resolved
     languages : list[str], optional
-        List of language codes that need to be resolved, default is 'en' and 'nl'.
+        List of language codes that need to be resolved, default is the languages of the catalogue.
 
     Returns
     -------
@@ -326,8 +330,36 @@ def _select_and_append_values(data_item: dict, fields_list: list, term_list: lis
             term_list = _collect_values_for_field(key, value, term_list)
     return term_list
 
+def _terms_from_schema(package_dict: dict) -> list[str] | None:
+    """The terms the dataset schema says have a label, or None when that cannot be asked.
+
+    None means that the extension that knows the schema is not installed or did not answer; the harvest
+    must go on with the field lists of this extension then.
+    """
+    try:
+        action = toolkit.get_action(TERMS_ACTION)
+    except Exception:  # not registered (KeyError), or no CKAN app to ask
+        return None
+    try:
+        terms = action({"ignore_auth": True}, {"package": package_dict})["terms"]
+    except Exception as error:
+        log.warning("Could not ask which terms of the dataset have a label, using the field lists: %s", error)
+        return None
+    if not isinstance(terms, list):
+        return None
+    return [term for term in terms if isinstance(term, str)]
+
+
 def terms_in_package_dict(package_dict: dict) -> list[str]:
-    """Extracts list of all terms (including nested) from the dict that could theoretically be resolved as URIs"""
+    """Extracts list of all terms (including nested) from the dict that could theoretically be resolved as URIs
+
+    The terms are the values of the fields the dataset schema shows as a label (ckanext-gdi-userportal); a
+    deployment without it uses the field lists of this module.
+    """
+    schema_terms = _terms_from_schema(package_dict)
+    if schema_terms is not None:
+        return [term for term in schema_terms if _is_absolute_uri(term)]
+
     term_list = []
     term_list = _select_and_append_values(package_dict, PACKAGE_REPLACE_FIELDS, term_list)
     resources = package_dict.get("resources")
